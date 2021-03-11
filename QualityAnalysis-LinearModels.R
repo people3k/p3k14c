@@ -2,6 +2,7 @@
 library(tidyverse)
 library(ggpubr)
 library(smatr)
+library(sf)
 
 options(scipen=999)
 
@@ -260,9 +261,9 @@ GGUSAbyCountyPerKM2 <-
   labs(x= expression("Count Arch. Sites per"~KM^2), 
        y= expression("Count 14C Dates per"~KM^2))+
   ggrepel::geom_text_repel(aes(label = ifelse(nSitesPerKM2 > 0.1,
-                               paste(guessed_subprovince,", ", AbbrevState,
-                                     sep = ""),
-                                     NA ))) +
+                                              paste(guessed_subprovince,", ", AbbrevState,
+                                                    sep = ""),
+                                              NA ))) +
   scale_y_continuous(limits = c(0, 1.26)) +
   ggtitle("U.S.A. States by county")+
   theme_bw()+
@@ -369,6 +370,37 @@ bounds <- read.csv(
   select(-Province) %>%
   mutate(Regional = as.factor(Regional))
 
+countries <- sf::read_sf(
+  here::here("data/raw_data/Qual_SiteCounts/ne_10m_admin_0_countries.shp")
+) %>% 
+  sf::st_transform("+proj=laea +x_0=0 +y_0=0 +lon_0=0 +lat_0=0") %>% 
+  dplyr::mutate(area_m = (geometry %>% st_area())) %>% 
+  dplyr::arrange(- area_m) %>% 
+  as.data.frame() %>% 
+  dplyr::group_by(ADMIN) %>% 
+  dplyr::summarize(area_sqm = sum(area_m)) %>% 
+  dplyr::mutate(area_sqkm = as.numeric(area_sqm * 1e-6 )) %>% 
+  dplyr::rename(
+    Country = ADMIN
+  ) %>% 
+  dplyr::select(Country, area_sqkm)
+
+provinces <- sf::read_sf(
+  here::here("data/raw_data/Qual_SiteCounts/ne_10m_admin_1_states_provinces_scale_rank.shp")
+) %>% 
+  sf::st_transform("+proj=laea +x_0=0 +y_0=0 +lon_0=0 +lat_0=0") %>% 
+  dplyr::mutate(area_m = (geometry %>% st_area())) %>% 
+  dplyr::arrange(- area_m) %>% 
+  as.data.frame() %>% 
+  dplyr::group_by(admin, name) %>% 
+  dplyr::summarize(area_sqm = sum(area_m)) %>% 
+  dplyr::mutate(area_sqkm = as.numeric(area_sqm * 1e-6 )) %>% 
+  dplyr::rename(
+    Country = admin,
+    Province = name
+  ) %>% 
+  dplyr::select(Country, Province, area_sqkm)
+
 #### China ========
 ChinaSites <- read_csv(
   here::here("data/raw_data/Qual_SiteCounts/china.csv")
@@ -385,6 +417,8 @@ ChinaSites <- read_csv(
                   stringr::str_replace_all(" Hui", ""  ) %>% 
                   stringr::str_replace_all(" Uyghur", ""))
 
+
+
 China <- RC %>% 
   dplyr::filter(Country == "China") %>% 
   dplyr::mutate(Province = guessed_province) %>% 
@@ -395,27 +429,39 @@ China <- RC %>%
   dplyr::rename(nDates = n) %>% 
   dplyr::mutate(Province = Province %>% 
                   stringr::str_replace_all("Xizang", "Tibet")) %>% 
-  dplyr::full_join(ChinaSites)
+  dplyr::inner_join(ChinaSites) %>% 
+  left_join(
+    provinces %>% 
+      dplyr::filter(Country == "China") %>% 
+      dplyr::mutate(Province = Province %>% 
+                      stringr::str_replace("Nei Mongol", "Inner Mongolia") %>% 
+                      stringr::str_replace("Ningxia Hui", "Ningxia") %>% 
+                      stringr::str_replace("Xinjiang Uygur", "Xinjiang") %>% 
+                      stringr::str_replace("Xizang", "Tibet"))
+  ) %>% 
+  dplyr::mutate(
+    nSitesPerKM2 = nSites / area_sqkm,
+    nDatesPerKM2 = nDates / area_sqkm
+  )
 
-SMAResultsChina <- sma((nDates)~(nSites), China)
+SMAResultsChina <- sma((nDatesPerKM2)~(nSitesPerKM2), China)
 summary(SMAResultsChina)
 smaSummaryChina <- coef(SMAResultsChina) %>% 
   t() %>% 
   as.data.frame() %>% 
   dplyr::mutate(pval = as.numeric(SMAResultsChina$pval))
 
-
 GGChina <- ggplot(data=China, 
                   aes(
-                    x= nSites,
-                    y= nDates
+                    x= nSitesPerKM2,
+                    y= nDatesPerKM2
                   )) +
   geom_point()+  
-  labs(x= expression("Count Arch. Sites"), 
-       y= expression("Count 14C Dates"))+
+  labs(x= expression("Count Arch. Sites per"~KM^2), 
+       y= expression("Count 14C Dates per"~KM^2))+
   ggtitle("China Provinces")+
-  geom_text(aes(label = ifelse(nDates > 400 | nSites > 6000 , Province, NA )),  hjust=-0.1, vjust=0.4)+
-  scale_x_continuous(limits = c(0,8000))+
+  ggrepel::geom_text_repel(aes(label = ifelse(nDatesPerKM2 > 0.003  , Province, NA )),  hjust=-0.1, vjust=0.4)+
+  # scale_x_continuous(limits = c(0,8000))+
   theme_bw()+
   theme(
     axis.title.x = element_text(size = 12),
@@ -444,15 +490,25 @@ GGChina <- ggplot(data=China,
 GGChina
 
 #### West Europe ========
-WEurSites <- read_csv(
-  here::here("data/raw_data/Qual_SiteCounts/nw_europe.csv")
-) %>% 
-  mutate(Country = country) %>% 
-  group_by(Country) %>% 
+WEurSites <- RC %>% 
+  dplyr::filter(Country %in% c(
+    "France",
+    "Netherlands", 
+    "Germany",
+    "Switzerland",
+    "Belgium",
+    "Spain",
+    "Portugal",
+    "United Kingdom",
+    "Ireland"
+  )) %>% 
+  dplyr::select(SiteName, SiteID, Country, guessed_province) %>% 
+  dplyr::distinct(SiteName, SiteID, Country, guessed_province)  %>% 
+  dplyr::group_by(Country) %>%
   dplyr::count() %>% 
-  ungroup()%>% 
-  mutate(nSites = n) %>% 
-  select(-n)
+  dplyr::ungroup() %>% 
+  dplyr::mutate(nSites = n) %>% 
+  dplyr::select(-n)
 
 WEur <-  RC %>% 
   group_by(Country) %>%
@@ -460,10 +516,18 @@ WEur <-  RC %>%
   ungroup()%>% 
   mutate(nDates = n) %>% 
   select(-n) %>% 
-  left_join(WEurSites) %>% 
-  filter(!is.na(nSites))
+  right_join(WEurSites) %>% 
+  filter(!is.na(nSites)) %>% 
+  left_join(
+    countries
+  ) %>% 
+  dplyr::mutate(
+    nSitesPerKM2 = nSites / area_sqkm,
+    nDatesPerKM2 = nDates / area_sqkm
+  )
 
-SMAResultsWEur <- sma((nDates)~(nSites), WEur)
+
+SMAResultsWEur <- sma((nDatesPerKM2)~(nSitesPerKM2), WEur)
 summary(SMAResultsWEur)
 smaSummaryWEur <- coef(SMAResultsWEur) %>% 
   t() %>% 
@@ -472,15 +536,15 @@ smaSummaryWEur <- coef(SMAResultsWEur) %>%
 
 GGWEur <- ggplot(data=WEur, 
                  aes(
-                   x= nSites,
-                   y= nDates
+                   x= nSitesPerKM2,
+                   y= nDatesPerKM2
                  ))+
   geom_point()+  
-  labs(x= expression("Count Arch. Sites"), 
-       y= expression("Count 14C Dates"))+
+  labs(x= expression("Count Arch. Sites per"~KM^2), 
+       y= expression("Count 14C Dates per"~KM^2))+
   ggtitle("Western Europe Countries")+
-  geom_text(aes(label = Country),  hjust=-0.1, vjust=0.4)+
-  scale_x_continuous(limits = c(0, 5500))+
+  ggrepel::geom_text_repel(aes(label = ifelse(nSitesPerKM2 > 0.02,Country, NA)),  hjust=-0.1, vjust=0.4)+
+  # scale_x_continuous(limits = c(0, 5500))+
   theme_bw()+
   theme(
     axis.title.x = element_text(size = 12),
@@ -511,14 +575,29 @@ GGWEur
 
 #### West Africa ========
 
-WAfrBounds <- as.list(bounds[2,])
-
 WAfrSites <- read_csv(
   here::here("data/raw_data/Qual_SiteCounts/Kay_WestAfrica_Sites.csv")
 ) %>% 
   filter(
-    X >= WAfrBounds$Lat_min & X <= WAfrBounds$Lat_max,
-    Y >= WAfrBounds$Long_min & Y <= WAfrBounds$Long_max
+    Country %in% c(
+      "Benin",
+      "BurkinaFaso",
+      "Cameroon",
+      "Chad",
+      "Congo",
+      "DRC",
+      "Equat.Guinea",
+      "Gabon",
+      "Ghana",
+      "Guinea",
+      "IvoryCoast",
+      "Liberia",
+      "Mali",
+      "Mauritania",
+      "Niger",
+      "Nigeria",
+      "Togo"
+    )
   ) %>% 
   group_by(Country) %>% 
   dplyr::count() %>% 
@@ -527,18 +606,29 @@ WAfrSites <- read_csv(
   select(-n)
 
 WAfr <- RC %>% 
-  filter(
-    Lat >= WAfrBounds$Lat_min & Lat <= WAfrBounds$Lat_max,
-    Long >= WAfrBounds$Long_min & Long <= WAfrBounds$Long_max
-  )  %>% 
   group_by(Country) %>%
   dplyr::count() %>% 
   ungroup()%>% 
   mutate(nDates = n) %>% 
   select(-n) %>% 
-  left_join(WAfrSites)
+  right_join(WAfrSites)%>% 
+  left_join(
+    countries %>% 
+      dplyr::mutate(
+        Country = Country %>% 
+          stringr::str_replace("Congo" ,"Republic of the Congo") %>% 
+          stringr::str_replace("IvoryCoast", "Ivory Coast") %>% 
+          stringr::str_replace("BurkinaFaso", "Burkina Faso") %>% 
+          stringr::str_replace("DRC" , "Democratic Republic of the Congo") %>% 
+          stringr::str_replace("Equat.Guinea" , "Equatorial Guinea"))) %>% 
+  dplyr::mutate(
+    nSitesPerKM2 = nSites / area_sqkm,
+    nDatesPerKM2 = nDates / area_sqkm
+  )
 
-SMAResultsWAfr <- sma((nDates)~(nSites), WAfr)
+
+
+SMAResultsWAfr <- sma((nDatesPerKM2)~(nSitesPerKM2), WAfr)
 summary(SMAResultsWAfr)
 smaSummaryWAfr <- coef(SMAResultsWAfr) %>% 
   t() %>% 
@@ -547,15 +637,15 @@ smaSummaryWAfr <- coef(SMAResultsWAfr) %>%
 
 GGWAfr <- ggplot(data=WAfr, 
                  aes(
-                   x= nSites,
-                   y= nDates
-                 ))+
+                   x= nSitesPerKM2,
+                   y= nDatesPerKM2
+                 )) +
   geom_point()+  
-  labs(x= expression("Count Arch. Sites"), 
-       y= expression("Count 14C Dates"),
+  labs(x= expression("Count Arch. Sites per"~KM^2), 
+       y= expression("Count 14C Dates per"~KM^2),
        subtitle = " (10S-15N; 17W-20E)")+
   ggtitle("Western Africa Countries")+
-  geom_text(aes(label = ifelse(nSites > 300,Country, NA)),  hjust=1.1, vjust=0.4)+
+  geom_text(aes(label = ifelse(nDatesPerKM2 > 0.00075,Country, NA)),  hjust=1.1, vjust=0.4)+
   # scale_x_continuous(limits = c(0, 370))+
   theme_bw()+
   theme(
@@ -613,9 +703,17 @@ WSA <- RC %>%
   dplyr::mutate(nDates = n) %>% 
   dplyr::select(-n) %>% 
   dplyr::left_join(WSASites) %>% 
-  dplyr::mutate(Country = as.factor(Country))
+  dplyr::mutate(Country = as.factor(Country)) %>% 
+  left_join(
+    provinces %>% dplyr::rename("guessed_province" = "Province")
+  ) %>% 
+  dplyr::mutate(
+    nSitesPerKM2 = nSites / area_sqkm,
+    nDatesPerKM2 = nDates / area_sqkm
+  )
 
-SMAResultsWSA <- sma((nDates)~(nSites), WSA)
+
+SMAResultsWSA <- sma((nDatesPerKM2)~(nSitesPerKM2), WSA)
 summary(SMAResultsWSA)
 smaSummaryWSA <- coef(SMAResultsWSA) %>% 
   t() %>% 
@@ -625,12 +723,12 @@ smaSummaryWSA <- coef(SMAResultsWSA) %>%
 
 GGWSA <- ggplot(data=WSA, 
                 aes(
-                  x= nSites,
-                  y= nDates
+                  x= nSitesPerKM2,
+                  y= nDatesPerKM2
                 ))+
   geom_point(aes(shape = Country))+  
-  labs(x= expression("Count Arch. Sites"), 
-       y= expression("Count 14C Dates"))+
+  labs(x= expression("Count Arch. Sites per"~KM^2), 
+       y= expression("Count 14C Dates per"~KM^2))+
   ggtitle("SW South American Provinces")+
   # geom_text(aes(label = Country),  hjust=-0.1, vjust=0.4)+
   # scale_x_continuous(limits = c(0, 30))+
@@ -641,7 +739,7 @@ GGWSA <- ggplot(data=WSA,
     axis.text.x = element_text(size = 10),
     axis.text.y = element_text(size = 10),
     plot.title = element_text(size = 14),
-    legend.position = c(0.8, 0.2),
+    legend.position = c(0.75, 0.2),
     legend.title = element_blank())+
   geom_abline(data = smaSummaryWSA , 
               aes(intercept = elevation, 
