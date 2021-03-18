@@ -1,12 +1,19 @@
 ####sensitivity (including kde) analysis fo SciPaper####
-#libraries
-library(sparr)
-library(sp)
-library(sf)
-library(tidyverse)
-library(rnaturalearth)
-library(maptools)
-library(spatstat)
+# install.packages("devtools")
+# install.packages("purrr")
+c("readr",
+  "tibble",
+  "tidyr",
+  "dplyr",
+  "sf",
+  "sparr",
+  "spatstat") %T>%
+  purrr::walk(devtools::install_cran,
+              quiet = TRUE) %>%
+  purrr::walk(library, 
+              character.only = TRUE)
+
+
 #data
 scipap<-read.csv("/home/marc/Dropbox/m_pers/people3k/20210224/radiocarbon_dates_scrubbedv5_1.csv",header=TRUE)
 scipap<-drop_na(scipap,Long,Lat)
