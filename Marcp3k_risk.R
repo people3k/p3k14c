@@ -15,6 +15,60 @@ c("readr",
 
 
 #data
+scipap <-
+  "radiocarbon_dates_scrubbedv5_1.csv" %>%
+  readr::read_csv() %>%
+  tidyr::drop_na(Long, Lat) %>%
+  sf::st_as_sf(coords = c("Long","Lat"),
+               crs = 4326) %>%
+  dplyr::mutate(Region = NA,
+                Region = ifelse(Continent == "Europe",
+                                "Europe",
+                                Region),
+                Region = ifelse(Country == "USA",
+                                "United States", 
+                                Region),
+                Region = ifelse(Country == "China",
+                                "China", 
+                                Region),
+                Region = ifelse(Long >= -17 & 
+                                  Long <= 20 & 
+                                  Lat >= -10 & 
+                                  Lat <= 15,
+                                "Western Africa",
+                                Region),
+                Region = ifelse(Long >= -70 & 
+                                  Long <= -57 & 
+                                  Lat >= -30 & 
+                                  Lat <= -23,
+                                "Southwestern USA",
+                                Region)
+  )
+
+swus <- 
+  c(xmin = -70,
+    xmax = -57,
+    ymin = -30,
+    ymax = -23) %>%
+  sf::st_bbox() %>%
+  sf::st_as_sfc(crs = 4326)
+
+wa <- 
+  c(xmin = -17,
+    xmax = 20,
+    ymin = -10,
+    ymax = 15) %>%
+  sf::st_bbox() %>%
+  sf::st_as_sfc(crs = 4326)
+
+#count sites
+scipap_counts <-
+  scipap %>%
+  dplyr::group_by(Region) %>%
+  dplyr::count()
+
+
+#data
 scipap<-read.csv("/home/marc/Dropbox/m_pers/people3k/20210224/radiocarbon_dates_scrubbedv5_1.csv",header=TRUE)
 scipap<-drop_na(scipap,Long,Lat)
 #subset for various windows
@@ -45,32 +99,17 @@ equal_earth<-"+proj=eqearth +lon_0=0 +lat_ts=0 +x_0=0 +y_0=0 +ellps=GRS80 +units
 world<-ne_download(scale=110,type="land",category="physical",returnclass = "sf")
 world.equal<-st_transform(world,crs=equal_earth)
 countries<-ne_download(scale=50,type="countries",category="cultural", returnclass = "sf")
-# mask china
-#china<-countries[countries$ADMIN=="China",]
-#china<-st_transform(china,equal_earth)
-#mask.china<-as.owin(china)
-#mask europe
+
 europe<-("/home/marc/Dropbox/m_pers/people3k/quality/europe.shp") #load data
 europe<-shapefile(europe)
 europe<-st_as_sf(europe)
 europe<-st_transform(europe,equal_earth)
-#mask.europe<-as.owin(europe)
-#mask nw europe
+
 nw.europe<-countries[countries$ADMIN=="Netherlands"|countries$ADMIN=="Belgium"|countries$ADMIN=="Denmark"|countries$ADMIN=="France"|
                        countries$ADMIN=="Germany"|countries$ADMIN=="Luxembourg",]
 nw.europe<-st_transform(nw.europe,equal_earth)
 nw.europe<-st_intersection(europe,nw.europe)
 mask.nw.europe<-as.owin(nw.europe)
-# mask western africa
-#mask.wa<-st_as_sf(st_sfc(st_polygon(list(cbind(c(-17,-17,20,20,-17),c(-10,15,15,-10,-10))))), crs=wgs84)
-#mask.wa<-st_transform(mask.wa,equal_earth)
-#mask.wa<-st_intersection(mask.wa,world.equal)
-#mask.wa<-as.owin(mask.wa)
-# mask western south america
-#mask.swa<-st_as_sf(st_sfc(st_polygon(list(cbind(c(-70,-57,-57,-70,-70),c(-30,-30,-23,-23,-30))))),crs=wgs84)
-#mask.swa<-st_transform(mask.swa,equal_earth)
-#mask.swa<-st_intersection(mask.swa,world.equal)
-#mask.swa<-as.owin(mask.swa)
 # mask usa
 usa<-ne_states(country="United States of America",returnclass = "sf")
 #usa<-usa[usa$name!="Alaska"&usa$name!="Hawaii",]
