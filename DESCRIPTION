@@ -1,5 +1,5 @@
-Package: Bird2021
-Title: Bird et al. 2021 Supplemental Information: P3k14C: A synthetic global database of archaeological radiocarbon dates
+Package: p3k14c
+Title: P3k14C: A Synthetic Global Database of Archaeological Radiocarbon Dates
 Version: 0.0.0.9000
 Authors@R: 
     c(
@@ -26,8 +26,8 @@ Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
-URL: https://github.com/people3k/P3K14CDatasetQualityAssessment
-BugReports: https://github.com/people3k/P3K14CDatasetQualityAssessment/issues
+URL: https://github.com/people3k/p3k14c
+BugReports: https://github.com/people3k/p3k14c/issues
 Suggests: 
     devtools
 Imports: 
