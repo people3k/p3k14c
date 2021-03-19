@@ -37,6 +37,7 @@ Imports:
     sf,
     tidyr,
     sparr,
-    spatstat
+    spatstat,
+    here
 Depends: 
     magrittr
