@@ -103,9 +103,6 @@ windows <-
       as("owin")
   ))
 
-
-
-
 # reproject point data and prepare individual ppp for KDE analyses
 # europe
 kde_dates <-
@@ -143,98 +140,32 @@ kde_sites <-
 
 kde_risk <-
   purrr::map2(.x = kde_dates,
-            .y = kde_sites,
-            .f = ~risk(.x, .y, tolerate = TRUE))
+              .y = kde_sites,
+              .f = ~risk(.x, .y, tolerate = TRUE))
 
 
-plot(kde_dates$`Northwestern Europe`)
-plot(kde_dates$`Desert US`)
+plot(kde_dates$`Desert US`,
+     main = "Kernel Density Estimate", 
+     xlab = "Easting", 
+     ylab = "Northing")
+plot(kde_sites$`Desert US`,
+     main = expression("Kernel Density estimate (weighed by number of "^14 * "C dates per sites)"), 
+     xlab = "Easting",
+     ylab = "Northing")
+plot(kde_risk$`Desert US`,
+     main = "Risk surface analysis", 
+     xlab = "Easting", 
+     ylab = "Northing")
 
-us_ppp <- 
-  scipap %>%
-  dplyr::filter(Region == "United States") %>%
-  sf::st_transform(8857) %>%
-  as("Spatial") %>%
-  as("ppp") %$%
-  ppp(x, 
-      y, 
-      window = dw.usa,
-      marks = marks$n)
-
-
-us_ppp %>%
-  sparr::OS(nstar = "npoints") %>%
-  bivariate.density(pp = us_ppp, 
-                    h0 = ., 
-                    adapt = FALSE, 
-                    edge = "diggle",
-                    weights = us_ppp$marks) %>%
-  plot()
-
-
-kde.dates.euro <-
-  world.ppp %>%
-  
-  sparr::OS(nstar = "npoints") %>%
-  bivariate.density(pp = world.ppp, 
-                    h0 = ., 
-                    adapt = FALSE, 
-                    edge = "diggle")
-
-dw.usa.ppp <-
-  scipap %>%
-  dplyr::filter(Region == "United States") %>%
-  sf::st_transform(8857) %>%
-  as("Spatial") %>%
-  as("ppp") %$%
-  ppp(x, 
-      y, 
-      window = dw.usa,
-      marks = marks$n)
-
-world.ppp <-
-  scipap %>%
-  sf::st_transform(8857) %>%
-  as("Spatial") %>%
-  as("ppp") %$%
-  ppp(x, 
-      y, 
-      window = world.equal,
-      marks = marks$n)
-
-kde.dates.world <-
-  world.ppp %>%
-  sparr::OS(nstar = "npoints") %>%
-  bivariate.density(pp = world.ppp, 
-                    h0 = ., 
-                    adapt = FALSE, 
-                    edge = "diggle")
-
-
-# risk surface analysis
-# north-western europe
-h0.nw.euro <- sparr::OS(nw.euro.ppp, nstar = "npoints")
-kde.dates.nw.euro <- bivariate.density(nw.euro.ppp, h0 = h0.nw.euro, adapt = FALSE, edge = "diggle")
-plot(kde.dates.nw.euro, main = "Kernel Density Estimate", xlab = "Easting", ylab = "Northing")
-plot(nw.europe, col = sf.colors(n = 1, alpha = 0), add = TRUE)
-kde.sites.nw.euro <- bivariate.density(nw.euro.ppp, h0 = h0.nw.euro, adapt = FALSE, edge = "diggle", weights = nw.euro.ppp$marks)
-plot(kde.sites.nw.euro,
-     main = expression("Kernel Density estimate (weighed by number of "^14 * "C dates per sites)"), xlab = "Easting", ylab = "Northing"
-)
-plot(nw.europe, col = sf.colors(n = 1, alpha = 0), add = TRUE)
-dates.sites.nw.euro <- risk(kde.dates.nw.euro, kde.sites.nw.euro, tolerate = TRUE)
-plot(dates.sites.nw.euro, main = "Risk surface analysis", xlab = "Easting", ylab = "Northing")
-plot(nw.europe, col = sf.colors(n = 1, alpha = 0), add = TRUE)
-# desert west usa
-h0.dw.usa <- OS(dw.usa.ppp, nstar = "npoints")
-dw.usa.dates <- bivariate.density(dw.usa.ppp, h0 = h0.dw.usa, adapt = FALSE, edge = "diggle")
-plot(dw.usa.dates, main = "Kernel Density Estimate", xlab = "Easting", ylab = "Northing")
-plot(dw.usa, col = sf.colors(n = 1, alpha = 0), add = TRUE)
-dw.usa.sites <- bivariate.density(dw.usa.ppp, h0 = h0.dw.usa, adapt = FALSE, edge = "diggle", weights = dw.usa.ppp$marks)
-plot(dw.usa.sites,
-     main = expression("Kernel Density Estimate (weighed by number of "^14 * "C dates per sites)"), xlab = "Easting", ylab = "Northing"
-)
-plot(dw.usa, col = sf.colors(n = 1, alpha = 0), add = TRUE)
-dates.sites.dw.usa <- risk(dw.usa.sites, dw.usa.dates, tolerate = TRUE)
-plot(dates.sites.dw.usa, main = "Risk surface analysis", xlab = "Easting", ylab = "Northing")
-plot(dw.usa, col = sf.colors(n = 1, alpha = 0), add = TRUE)
+plot(kde_dates$`Northwestern Europe`,
+     main = "Kernel Density Estimate", 
+     xlab = "Easting", 
+     ylab = "Northing")
+plot(kde_sites$`Northwestern Europe`,
+     main = expression("Kernel Density estimate (weighed by number of "^14 * "C dates per sites)"), 
+     xlab = "Easting",
+     ylab = "Northing")
+plot(kde_risk$`Northwestern Europe`,
+     main = "Risk surface analysis", 
+     xlab = "Easting", 
+     ylab = "Northing")
