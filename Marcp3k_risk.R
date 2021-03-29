@@ -23,22 +23,19 @@ c(
               character.only = TRUE
   )
 
-sf::st_bbox(c(xmin = -180,xmax = 180,ymin = -90,ymax = 90), crs = 4326) %>%
-  sf::st_as_sfc() %>%
-  sf::st_transform(8857) %>%
-  as("Spatial") %>%
-  as("owin")
-
 # Spatial windows for risk analysis
 windows <-
   list(
     
     # Global land area (EPSG 8857)
     `World` = 
-      rnaturalearth::ne_countries(returnclass = "sf") %>%
-      dplyr::select(geometry) %>%
-      sf::st_transform("EPSG:8857") %>%
-      sf::st_union(),
+      sf::st_bbox(c(xmin = -180,
+                    xmax = 180,
+                    ymin = -90,
+                    ymax = 90), 
+                  crs = "EPSG:4326") %>%
+      sf::st_as_sfc() %>%
+      sf::st_transform("EPSG:8857"),
     
     # Northwestern Europe in Albers Equal Area Conic (ESRI 102013)
     `Northwestern Europe` = 
@@ -71,18 +68,11 @@ windows <-
       sf::st_transform("ESRI:102003") %>%
       sf::st_union()) %>%
   purrr::map(sf::st_cast,
-             "MULTIPOLYGON")# %>%
-# # OWIN transform
-#   purrr::map(~(
-#     .x %>%
-#       sf::st_transform(8857) %>%
-#       as("Spatial") %>%
-#       as("owin")
-#   ))
+             "MULTIPOLYGON")
 
 # Radiocarbon date data
 radiocarbon_dates <-
-  "data/raw_data/radiocarbon_dates_scrubbedv5_1.csv" %>%
+  "data/raw_data/P3k14C_scrubbed_fuzzed.csv" %>%
   here::here() %>%
   readr::read_csv(col_types = 
                     readr::cols(
@@ -92,6 +82,7 @@ radiocarbon_dates <-
                       Lat = readr::col_double(),
                       .default = readr::col_character()
                     )) %>%
+  dplyr::mutate(dplyr::across(SiteID:SiteName, stringr::str_trim)) %>%
   tidyr::drop_na(Long, Lat) %>%
   dplyr::count(SiteID,
                SiteName,
@@ -100,41 +91,28 @@ radiocarbon_dates <-
                name = "Dates") %>%
   sf::st_as_sf(
     coords = c("Long", "Lat"),
-    crs = "EPSG:4326"
+    crs = "EPSG:4326",
+    remove = FALSE
   ) %>%
   # Transform to equal earth projection (EPSG 8857)
-  sf::st_transform("EPSG:8857")
+  sf::st_transform("EPSG:8857") %>%
+  # Assign windows using spatial intersection 
+  # with a 100km buffer around the windows
+  sf::st_join(
+    windows %>%
+      purrr::map(
+        ~(
+          .x %>%
+            sf::st_transform("EPSG:8857") %>%
+            sf::st_buffer(100000)
+        )) %>%
+      {
+        tibble::tibble(Window = names(.), 
+                       geom = do.call(c, .))
+      } %>%
+      sf::st_as_sf()
+  )
 
-# %>%
-#   # Assign windows using spatial intersection
-#   sf::st_join(
-#     windows %>%
-#       purrr::map(
-#         ~(
-#           .x %>% 
-#             sf::st_transform("EPSG:8857")
-#         )) %>%
-#       {
-#         tibble::tibble(Window = names(.), geom = do.call(c, .))
-#       } %>%
-#       sf::st_as_sf()
-#   )
-
-
-
-
-
-
-
-
-
-radiocarbon_dates %>%
-  dplyr::filter(is.na(Window)) %>%
-  dplyr::select(-Window) %>%
-  tibble::as_tibble() %>%
-  dplyr::distinct() %>%
-  sf::st_as_sf() %>%
-  mapview::mapview()
 # Count dates/sites
 radiocarbon_dates %>%
   sf::st_drop_geometry() %>%
@@ -142,41 +120,39 @@ radiocarbon_dates %>%
   dplyr::summarise(Dates = sum(Dates, na.rm = TRUE),
                    Sites = dplyr::n()) %>%
   na.omit()
-  {
-    list(dplyr::mutate(., Window = "Total") %>%
-           dplyr::group_by(Window)
-         ,
-         dplyr::group_by(., Window))
-  } %>%
-  purrr::map_dfr(
-    ~(
-      .x %>%
-        dplyr::summarise(Dates = sum(Dates, na.rm = TRUE),
-                         Sites = dplyr::n()) %>%
-        na.omit()
-    ) 
-  )%>%
-  tibble::column_to_rownames("Window")
+
+radiocarbon_dates %>%
+  dplyr::filter(is.na(Window)) %>%
+  mapview::mapview()
 
 
+# Create a Point Pattern ("ppp") object
 radiocarbon_dates_ppp <-
   radiocarbon_dates %>%
+  # Cast to a Spatial Points object
   as("Spatial") %>%
+  # Cast to a Point Pattern object
   as("ppp") %>%
-  window(windows$World %>%
-           sf::st_bbox() %>%
-           sf::st_as_sfc() %>%
-           as("Spatial") %>%
-           as("owin"))
+  # Window to the World in order to extend KDE around globe
+  window(
+    windows$World %>%
+      sf::st_bbox() %>%
+      sf::st_as_sfc() %>%
+      as("Spatial") %>%
+      as("owin")
+  )
 
-world_kde_dates <-
+# Create a KDE of the sites
+world_kde_sites <-
   bivariate.density(pp = radiocarbon_dates_ppp, 
                     h0 = 200000, 
                     adapt = FALSE, 
                     edge = "diggle",
                     resolution = 2000)
-  
-world_kde_sites <-
+
+# Create a KDE of the sites, 
+# weighted by the number of dates at each site
+world_kde_sites_dates <-
   bivariate.density(pp = radiocarbon_dates_ppp, 
                     h0 = 200000, 
                     adapt = FALSE, 
@@ -184,8 +160,11 @@ world_kde_sites <-
                     weights = radiocarbon_dates_ppp$marks$Dates,
                     resolution = 2000)
 
+# Calculate the spatial relative risk/density ratio
 world_risk <-
-  risk(world_kde_dates,world_kde_sites, tolerate = TRUE)
+  risk(world_kde_sites,
+       world_kde_sites_dates, 
+       tolerate = TRUE)
 
 world_kde_sites <- 
   world_kde_sites$z %>%
