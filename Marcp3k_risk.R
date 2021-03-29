@@ -1,27 +1,5 @@
-#### sensitivity (including kde) analysis fo SciPaper####
-# install.packages("devtools")
-# install.packages("purrr")
-# install.packages("magrittr")
-library(magrittr)
-c(
-  "readr",
-  "tibble",
-  "tidyr",
-  "dplyr",
-  "sf",
-  "sparr",
-  "spatstat",
-  "magrittr",
-  "ggplot2",
-  "maptools"
-) %T>%
-  purrr::walk(devtools::install_cran,
-              type = "binary",
-              quiet = TRUE
-  ) %>%
-  purrr::walk(library,
-              character.only = TRUE
-  )
+#### sensitivity (including kde) analysis for SciPaper####
+library(p3k14c)
 
 # Spatial windows for risk analysis
 windows <-
@@ -29,13 +7,11 @@ windows <-
     
     # Global land area (EPSG 8857)
     `World` = 
-      sf::st_bbox(c(xmin = -180,
-                    xmax = 180,
-                    ymin = -90,
-                    ymax = 90), 
-                  crs = "EPSG:4326") %>%
-      sf::st_as_sfc() %>%
-      sf::st_transform("EPSG:8857"),
+      rnaturalearth::ne_countries(scale = 10,
+                                  returnclass = "sf")  %>%
+      dplyr::select(geometry) %>%
+      sf::st_transform("EPSG:8857") %>%
+      sf::st_union(),
     
     # Northwestern Europe in Albers Equal Area Conic (ESRI 102013)
     `Northwestern Europe` = 
@@ -86,6 +62,7 @@ radiocarbon_dates <-
   tidyr::drop_na(Long, Lat) %>%
   dplyr::count(SiteID,
                SiteName,
+               Continent,
                Long,
                Lat,
                name = "Dates") %>%
@@ -95,89 +72,86 @@ radiocarbon_dates <-
     remove = FALSE
   ) %>%
   # Transform to equal earth projection (EPSG 8857)
-  sf::st_transform("EPSG:8857") %>%
-  # Assign windows using spatial intersection 
-  # with a 100km buffer around the windows
-  sf::st_join(
-    windows %>%
-      purrr::map(
-        ~(
-          .x %>%
-            sf::st_transform("EPSG:8857") %>%
-            sf::st_buffer(100000)
-        )) %>%
-      {
-        tibble::tibble(Window = names(.), 
-                       geom = do.call(c, .))
-      } %>%
-      sf::st_as_sf()
-  )
+  sf::st_transform("EPSG:8857")
 
 # Count dates/sites
 radiocarbon_dates %>%
   sf::st_drop_geometry() %>%
-  dplyr::group_by(Window) %>%
+  dplyr::group_by(Continent) %>%
   dplyr::summarise(Dates = sum(Dates, na.rm = TRUE),
                    Sites = dplyr::n()) %>%
-  na.omit()
-
-radiocarbon_dates %>%
-  dplyr::filter(is.na(Window)) %>%
-  mapview::mapview()
-
+  na.omit() %>%
+  dplyr::arrange(dplyr::desc(Dates))
 
 # Create a Point Pattern ("ppp") object
 radiocarbon_dates_ppp <-
   radiocarbon_dates %>%
   # Cast to a Spatial Points object
-  as("Spatial") %>%
+  sf::as_Spatial() %>%
   # Cast to a Point Pattern object
-  as("ppp") %>%
+  maptools::as.ppp.SpatialPointsDataFrame() %>%
   # Window to the World in order to extend KDE around globe
   window(
     windows$World %>%
       sf::st_bbox() %>%
       sf::st_as_sfc() %>%
-      as("Spatial") %>%
-      as("owin")
+      sf::st_buffer(1000000) %>%
+      sf::as_Spatial() %>%
+      maptools::as.owin.SpatialPolygons()
   )
 
 # Create a KDE of the sites
 world_kde_sites <-
-  bivariate.density(pp = radiocarbon_dates_ppp, 
-                    h0 = 200000, 
-                    adapt = FALSE, 
-                    edge = "diggle",
-                    resolution = 2000)
+  sparr::bivariate.density(pp = radiocarbon_dates_ppp, 
+                           h0 = 200000, 
+                           adapt = FALSE, 
+                           edge = "diggle",
+                           resolution = 2000)
 
 # Create a KDE of the sites, 
 # weighted by the number of dates at each site
 world_kde_sites_dates <-
-  bivariate.density(pp = radiocarbon_dates_ppp, 
-                    h0 = 200000, 
-                    adapt = FALSE, 
-                    edge = "diggle",
-                    weights = radiocarbon_dates_ppp$marks$Dates,
-                    resolution = 2000)
+  sparr::bivariate.density(pp = radiocarbon_dates_ppp, 
+                           h0 = 200000, 
+                           adapt = FALSE, 
+                           
+                           edge = "diggle",
+                           weights = radiocarbon_dates_ppp$marks$Dates,
+                           resolution = 2000)
 
 # Calculate the spatial relative risk/density ratio
 world_risk <-
-  risk(world_kde_sites,
-       world_kde_sites_dates, 
-       tolerate = TRUE)
+  sparr::risk(world_kde_sites,
+              world_kde_sites_dates, 
+              tolerate = TRUE)
+
+
+
+
+
+
 
 world_kde_sites <- 
   world_kde_sites$z %>%
   raster::raster()
 raster::crs(world_kde_sites) <- as(sf::st_crs("EPSG:8857"), "CRS")
 
-plot(world_kde_sites[world_kde_sites > 1e-36])
-world_kde_sites[world_kde_sites < 1e-30] <- NA
 
-raster::plot(raster::raster(world_kde_sites$z))
+world_kde_sites_dates <- 
+  world_kde_sites_dates$z %>%
+  raster::raster()
+raster::crs(world_kde_sites_dates) <- as(sf::st_crs("EPSG:8857"), "CRS")
 
-plot(world_kde_dates)
+world_risk <- 
+  world_risk$rr %>%
+  raster::raster()
+raster::crs(world_risk) <- as(sf::st_crs("EPSG:8857"), "CRS")
+plot(world_risk > -5)
+
+raster::plot(raster::raster(world_risk$rr))
+
 plot(world_kde_sites)
+plot(world_kde_sites_dates)
 plot(world_risk)
 plot(windows$World, add = TRUE)
 
