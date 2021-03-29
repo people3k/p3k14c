@@ -9,7 +9,8 @@ library(rnaturalearth)
 library(maptools)
 library(spatstat)
 #data
-scipap<-read.csv("/home/marc/Dropbox/m_pers/people3k/20210224/radiocarbon_dates_scrubbedv5_1.csv",header=TRUE)
+scipap<-RC
+  read.csv("/home/marc/Dropbox/m_pers/people3k/20210224/radiocarbon_dates_scrubbedv5_1.csv",header=TRUE)
 scipap<-drop_na(scipap,Long,Lat)
 #subset for various windows
 #scipap.china<-filter(scipap,Country=="China")
