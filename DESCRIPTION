@@ -21,7 +21,7 @@ Authors@R:
            )
 Description: This R package repository is a research compendium for Bird et al. 2021.
     The compendium contains all code associated with the analyses described and presented in the publication.
-License: GPL (>= 3)
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
