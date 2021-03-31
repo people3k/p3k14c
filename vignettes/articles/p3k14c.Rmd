@@ -1,0 +1,14 @@
+---
+title: "P3k14C: A synthetic global database of archaeological radiocarbon dates"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(p3k14c)
+```

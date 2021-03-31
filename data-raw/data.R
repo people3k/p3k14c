@@ -1,5 +1,8 @@
 library(magrittr)
 
+# The cleaned and fuzzed p3k14c dataset
+# NOTE: DOWNLOAD FROM DOI HERE
+
 # Download low resolution land area of Earth
 download.file(
   url = "https://www.naturalearthdata.com/http//www.naturalearthdata.com/download/110m/physical/ne_110m_land.zip",
