@@ -35,12 +35,13 @@ Imports:
     tibble,
     readr,
     dplyr,
-    sf,
     tidyr,
     sparr,
     spatstat,
     here,
     ggplot2
 Depends: 
-    magrittr
+    R (>= 2.10),
+    magrittr,
+    sf
 Config/testthat/edition: 3

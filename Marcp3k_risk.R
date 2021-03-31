@@ -1,53 +1,24 @@
 #### sensitivity (including kde) analysis for SciPaper####
 library(p3k14c)
+library(ggplot2)
 
 # Spatial windows for risk analysis
 windows <-
   list(
     
     # Global land area (EPSG 8857)
-    `World` = 
-      rnaturalearth::ne_countries(scale = 10,
-                                  returnclass = "sf")  %>%
-      dplyr::select(geometry) %>%
-      sf::st_transform("EPSG:8857") %>%
-      sf::st_union(),
+    `World` = p3k14c::world,
     
     # Northwestern Europe in Albers Equal Area Conic (ESRI 102013)
-    `Northwestern Europe` = 
-      rnaturalearth::ne_states(country = c("Netherlands",
-                                           "Belgium",
-                                           "Denmark",
-                                           "France",
-                                           "Germany",
-                                           "Luxembourg"),
-                               returnclass = "sf") %>%
-      dplyr::filter(!(name %in% c("Guyane française",
-                                  "Martinique",
-                                  "Guadeloupe",
-                                  "St. Eustatius",
-                                  "Saba",
-                                  "Haute-Corse",
-                                  "Corse-du-Sud",
-                                  "Mayotte",
-                                  "La Réunion"))) %>%
-      dplyr::select(geometry) %>%
-      sf::st_transform("ESRI:102013") %>%
-      sf::st_union(),
+    `Northwestern Europe` = p3k14c::nw_europe,
     
     # Contiguous USA in Albers Equal Area Conic (ESRI 102003)
-    `United States` = 
-      rnaturalearth::ne_states(country = "United States of America", 
-                               returnclass = "sf") %>%
-      dplyr::filter(!(name %in% c("Hawaii",
-                                  "Alaska")))%>%
-      sf::st_transform("ESRI:102003") %>%
-      sf::st_union()) %>%
-  purrr::map(sf::st_cast,
-             "MULTIPOLYGON")
+    `United States` = p3k14c::conus
+    
+  )
 
 # Radiocarbon date data
-radiocarbon_dates <-
+p3k14c_data <-
   "data/raw_data/P3k14C_scrubbed_fuzzed.csv" %>%
   here::here() %>%
   readr::read_csv(col_types = 
@@ -58,7 +29,7 @@ radiocarbon_dates <-
                       Lat = readr::col_double(),
                       .default = readr::col_character()
                     )) %>%
-  dplyr::mutate(dplyr::across(SiteID:SiteName, stringr::str_trim)) %>%
+  
   tidyr::drop_na(Long, Lat) %>%
   dplyr::count(SiteID,
                SiteName,
@@ -75,7 +46,7 @@ radiocarbon_dates <-
   sf::st_transform("EPSG:8857")
 
 # Count dates/sites
-radiocarbon_dates %>%
+p3k14c_data %>%
   sf::st_drop_geometry() %>%
   dplyr::group_by(Continent) %>%
   dplyr::summarise(Dates = sum(Dates, na.rm = TRUE),
@@ -84,147 +55,141 @@ radiocarbon_dates %>%
   dplyr::arrange(dplyr::desc(Dates))
 
 # Create a Point Pattern ("ppp") object
-radiocarbon_dates_ppp <-
-  radiocarbon_dates %>%
+p3k14c_data_ppp <-
+  p3k14c_data %>%
   # Cast to a Spatial Points object
   sf::as_Spatial() %>%
   # Cast to a Point Pattern object
   maptools::as.ppp.SpatialPointsDataFrame() %>%
-  # Window to the World in order to extend KDE around globe
+  # Window to extend KDE around globe
   window(
     windows$World %>%
       sf::st_bbox() %>%
       sf::st_as_sfc() %>%
-      sf::st_buffer(1000000) %>%
       sf::as_Spatial() %>%
       maptools::as.owin.SpatialPolygons()
   )
 
+
 # Create a KDE of the sites
-world_kde_sites <-
-  sparr::bivariate.density(pp = radiocarbon_dates_ppp, 
+p3k14c_kde_sites <-
+  sparr::bivariate.density(pp = p3k14c_data_ppp, 
                            h0 = 200000, 
                            adapt = FALSE, 
-                           edge = "diggle",
-                           resolution = 2000)
+                           edge = "none",
+                           resolution = 4000)
 
 # Create a KDE of the sites, 
 # weighted by the number of dates at each site
-world_kde_sites_dates <-
-  sparr::bivariate.density(pp = radiocarbon_dates_ppp, 
+p3k14c_kde_dates <-
+  sparr::bivariate.density(pp = p3k14c_data_ppp, 
                            h0 = 200000, 
                            adapt = FALSE, 
-                           
-                           edge = "diggle",
-                           weights = radiocarbon_dates_ppp$marks$Dates,
-                           resolution = 2000)
+                           edge = "none",
+                           resolution = 4000,
+                           weights = p3k14c_data_ppp$marks$Dates)
 
 # Calculate the spatial relative risk/density ratio
-world_risk <-
-  sparr::risk(world_kde_sites,
-              world_kde_sites_dates, 
+p3k14c_risk <-
+  sparr::risk(p3k14c_kde_sites,
+              p3k14c_kde_dates,
               tolerate = TRUE)
 
 
+normalize_raster <- 
+  function(x){
+    # This simply re-normalizes so the values in the area of interest equal 1
+    raster::values(x) <- 
+      raster::values(x) %>% 
+      {
+        . / sum(., na.rm = TRUE)
+      }
+    x
+  }
 
+plot_kde <- 
+  function(global_kde, windows){
+    windows %>%
+      purrr::map(
+        ~(
+          global_kde %>%
+            as_raster.bivden(crs = "EPSG:8857",
+                             crop = .x) %>%
+            raster::projectRaster(crs = 
+                                    .x %>%
+                                    sf::st_crs() %>%
+                                    as("CRS")) %>%
+            normalize_raster() %>%
+            raster::trim() %>%
+            raster::as.data.frame(xy = TRUE) %>%
+            na.omit() %>%
+            {
+              ggplot() +
+                geom_tile(data = .,
+                          mapping = aes(x = x, 
+                                        y = y, 
+                                        fill = layer)) +
+                geom_sf(data = .x,
+                        fill = "transparent",
+                        color = "black") +
+                scale_fill_viridis_c(option = "C") +
+                ggplot2::theme_minimal()
+            }
+          
+        )
+      )
+  }
 
+plot_risk <- 
+  function(global_risk, windows){
+    windows %>%
+      purrr::map(
+        ~(
+          global_risk %>%
+            as_raster.rrs(crs = "EPSG:8857",
+                          crop = .x) %>%
+            raster::projectRaster(crs = 
+                                    .x %>%
+                                    sf::st_crs() %>%
+                                    as("CRS")) %>%
+            raster::trim() %>%
+            raster::as.data.frame(xy = TRUE) %>%
+            na.omit() %>%
+            {
+              ggplot() +
+                geom_tile(data = .,
+                          mapping = aes(x = x, 
+                                        y = y, 
+                                        fill = rr)) +
+                geom_sf(data = .x,
+                        fill = "transparent",
+                        color = "black") +
+                geom_contour(data = .,
+                             mapping = aes(x = x, 
+                                           y = y,
+                                           z = p),
+                             breaks = 0.05,
+                             colour = "white") +
+                scale_fill_viridis_c(option = "C",
+                                     limits = c(-0.5, 0.5)) +
+                ggplot2::theme_minimal()
+            }
+          
+        )
+      )
+  }
 
-
-
-world_kde_sites <- 
-  world_kde_sites$z %>%
-  raster::raster()
-raster::crs(world_kde_sites) <- as(sf::st_crs("EPSG:8857"), "CRS")
-
-
-world_kde_sites_dates <- 
-  world_kde_sites_dates$z %>%
-  raster::raster()
-raster::crs(world_kde_sites_dates) <- as(sf::st_crs("EPSG:8857"), "CRS")
-
-world_risk <- 
-  world_risk$rr %>%
-  raster::raster()
-raster::crs(world_risk) <- as(sf::st_crs("EPSG:8857"), "CRS")
-plot(world_risk > -5)
-
-raster::plot(raster::raster(world_risk$rr))
-
-plot(world_kde_sites)
-plot(world_kde_sites_dates)
-plot(world_risk)
-plot(windows$World, add = TRUE)
-
-windows$World %>%
-  sf::st_bbox() %>%
-  sf::st_as_sfc() %>%
-  as("Spatial") %>%
-  as("owin")
-
-
-# reproject point data and prepare individual ppp for KDE analyses
-# europe
-kde_dates <-
-  windows %>%
-  purrr::map(~window(scipap %>%
-                       sf::st_transform(8857) %>%
-                       as("Spatial") %>%
-                       as("ppp"), 
-                     .x)) %>%
-  purrr::map(~(
-    .x %>%
-      sparr::OS() %>%
-      bivariate.density(pp = .x, 
-                        h0 = ., 
-                        adapt = FALSE, 
-                        edge = "diggle")
-  ))
-
-kde_sites <-
-  windows %>%
-  purrr::map(~window(scipap %>%
-                       sf::st_transform(8857) %>%
-                       as("Spatial") %>%
-                       as("ppp"), 
-                     .x)) %>%
-  purrr::map(~(
-    .x %>%
-      sparr::OS() %>%
-      bivariate.density(pp = .x, 
-                        h0 = ., 
-                        adapt = FALSE, 
-                        edge = "diggle",
-                        weights = .x$marks$n)
-  ))
-
-kde_risk <-
-  purrr::map2(.x = kde_dates,
-              .y = kde_sites,
-              .f = ~risk(.x, .y, tolerate = TRUE))
-
-
-plot(kde_dates$`United States`,
-     main = "Kernel Density Estimate\nUnited States", 
-     xlab = "Easting", 
-     ylab = "Northing")
-plot(kde_sites$`United States`,
-     main = expression("Kernel Density estimate (weighed by number of "^14 * "C dates per sites)\nUnited States"), 
-     xlab = "Easting",
-     ylab = "Northing")
-plot(kde_risk$`United States`,
-     main = "Risk surface analysis\nUnited States", 
-     xlab = "Easting", 
-     ylab = "Northing")
-
-plot(kde_dates$`Northwestern Europe`,
-     main = "Kernel Density Estimate\nNorthwestern Europe", 
-     xlab = "Easting", 
-     ylab = "Northing")
-plot(kde_sites$`Northwestern Europe`,
-     main = expression("Kernel Density estimate (weighed by number of "^14 * "C dates per sites)\nNorthwestern Europe"), 
-     xlab = "Easting",
-     ylab = "Northing")
-plot(kde_risk$`Northwestern Europe`,
-     main = "Risk surface analysis\nNorthwestern Europe", 
-     xlab = "Easting", 
-     ylab = "Northing")
+# Generate the plots
+p3k14c_plots <- 
+  list(
+    sites = 
+      plot_kde(global_kde = p3k14c_kde_sites,
+               windows = windows),
+    dates = 
+      plot_kde(global_kde = p3k14c_kde_dates,
+               windows = windows),
+    risk = 
+      plot_risk(global_risk = p3k14c_risk,
+                windows = windows)
+  ) %>%
+  purrr::transpose()
