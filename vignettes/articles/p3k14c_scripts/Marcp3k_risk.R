@@ -19,7 +19,7 @@ windows <-
 
 # Radiocarbon date data
 p3k14c_data <-
-  "data/raw_data/P3k14C_scrubbed_fuzzed.csv" %>%
+  "vignettes/articles/raw_data/P3k14C_scrubbed_fuzzed.csv" %>%
   here::here() %>%
   readr::read_csv(col_types = 
                     readr::cols(
@@ -29,7 +29,6 @@ p3k14c_data <-
                       Lat = readr::col_double(),
                       .default = readr::col_character()
                     )) %>%
-  
   tidyr::drop_na(Long, Lat) %>%
   dplyr::count(SiteID,
                SiteName,
