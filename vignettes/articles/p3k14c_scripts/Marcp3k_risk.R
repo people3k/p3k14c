@@ -44,6 +44,51 @@ p3k14c_data <-
   # Transform to equal earth projection (EPSG 8857)
   sf::st_transform("EPSG:8857")
 
+# World map with radiocarbon dates
+ggplot() +
+  geom_sf(data = p3k14c::world) +
+  geom_sf(data = p3k14c_data,
+          mapping = aes(color = Continent,
+                        fill = Continent),
+          alpha = 0.2,
+          size = 0.75,
+          shape = 19,
+          stroke = 0) +
+  geom_sf_text(data = 
+                 tibble::tibble(
+                   x = c(-180,-180,-180),
+                   y = c(-50,0,50),
+                   label = c("50ºS", "0º","50ºN")
+                 ) %>%
+                 sf::st_as_sf(coords = c("x","y"),
+                              crs = 4326),
+               mapping = aes(label = label),
+               size = 3,
+               colour = "grey30",
+               hjust = 1.5) +
+  scale_x_continuous(expand = ggplot2::expansion(0.05,0)) +
+  scale_y_continuous(expand = ggplot2::expansion(0,0)) +
+  ggplot2::labs(x = NULL, y = NULL) +
+  theme_map(legend.position = c(0.1,0.5)) +
+  guides(colour = guide_legend(override.aes = list(size = 3,
+                                                   alpha = 1)))
+
+world_plot_ratio <- 
+  p3k14c::world %>%
+  sf::st_bbox()  %>%
+  as.list() %$% 
+  {(ymax - ymin) / (xmax - xmin)}
+
+fig_width <- 178
+fig_height <- fig_width * world_plot_ratio
+
+ggplot2::ggsave("Figure3_global_map.pdf",
+                width = fig_width,
+                height = fig_height,
+                units = "mm"
+)
+
+
 # Count dates/sites
 p3k14c_data %>%
   sf::st_drop_geometry() %>%
@@ -94,15 +139,18 @@ p3k14c_risk <-
               p3k14c_kde_dates,
               tolerate = TRUE)
 
+# Get two-sided tolerance values
+p3k14c_risk$P$v <-
+  p3k14c_risk$P %>%
+  as.matrix() %>%
+  { 2 * pmin(., 1 - .) }
 
 normalize_raster <- 
   function(x){
     # This simply re-normalizes so the values in the area of interest equal 1
     raster::values(x) <- 
       raster::values(x) %>% 
-      {
-        . / sum(., na.rm = TRUE)
-      }
+      { . / sum(., na.rm = TRUE) }
     x
   }
 
@@ -132,7 +180,7 @@ plot_kde <-
                         fill = "transparent",
                         color = "black") +
                 scale_fill_viridis_c(option = "C") +
-                ggplot2::theme_minimal()
+                theme_map()
             }
           
         )
@@ -171,7 +219,7 @@ plot_risk <-
                              colour = "white") +
                 scale_fill_viridis_c(option = "C",
                                      limits = c(-0.5, 0.5)) +
-                ggplot2::theme_minimal()
+                theme_map()
             }
           
         )
