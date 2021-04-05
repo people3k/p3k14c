@@ -30,18 +30,9 @@ Robert L. Kelly[![](https://orcid.org/sites/default/files/images/orcid_16x16.png
 
 ## Installation
 
-You can install the released version of p3k14c from [CRAN](https://CRAN.R-project.org) with:
+You can install the released version of p3k14c from Github with:
 
 ``` r
-install.packages("p3k14c")
+# install.packages("remotes")
+remotes::install_github("people3k/p3k14c")
 ```
-
-## Example
-
-This is a basic example which shows you how to solve a common problem:
-
-``` r
-library(p3k14c)
-## basic example code
-```
-
