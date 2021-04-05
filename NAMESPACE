@@ -3,3 +3,4 @@
 S3method(window,ppp)
 export(as_raster.bivden)
 export(as_raster.rrs)
+export(theme_map)

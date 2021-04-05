@@ -2,6 +2,18 @@ library(magrittr)
 
 # The cleaned and fuzzed p3k14c dataset
 # NOTE: DOWNLOAD FROM DOI HERE
+p3k14c_data <-
+  here::here("inst/p3k14c_scrubbed_fuzzed.csv") %>%
+  readr::read_csv(col_types = 
+                    readr::cols(
+                      Age = readr::col_double(),
+                      Error = readr::col_double(),
+                      Long = readr::col_double(),
+                      Lat = readr::col_double(),
+                      LocAccuracy = readr::col_double(),
+                      .default = readr::col_character()
+                    ))
+usethis::use_data(p3k14c_data)
 
 # Download low resolution land area of Earth
 download.file(

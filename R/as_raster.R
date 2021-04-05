@@ -7,19 +7,23 @@
 as_raster.bivden <-
   function(x, crs, crop = NULL){
     out <- raster::raster(x$z)
-    raster::crs(out) <- sp::CRS(crs)
+    raster::crs(out) <- crs
     if(!is.null(crop)){
       out %<>%
         raster::mask(
           crop %>%
-            sf::st_transform("EPSG:8857") %>%
+            sf::st_transform(crs) %>%
             as("Spatial")) %>%
         raster::crop(
           crop %>%
-            sf::st_transform("EPSG:8857") %>%
+            sf::st_transform(crs) %>%
             as("Spatial"), snap = "out")
     }
-    out
+    out %>%
+      raster::trim() %>%
+      raster::as.data.frame(xy = TRUE) %>%
+      na.omit() %>%
+      tibble::as_tibble()
   }
 
 #' Converters for sparr objects to rasters
@@ -37,20 +41,24 @@ as_raster.rrs <-
     ) %>%
       raster::brick()
     
-    raster::crs(out) <- sp::CRS(crs)
+    raster::crs(out) <- crs
     
     if(!is.null(crop)){
       out %<>%
         raster::mask(
           crop %>%
-            sf::st_transform("EPSG:8857") %>%
+            sf::st_transform(crs) %>%
             as("Spatial")) %>%
         raster::crop(
           crop %>%
-            sf::st_transform("EPSG:8857") %>%
+            sf::st_transform(crs) %>%
             as("Spatial"), snap = "out")
     }
     
-    out
+    out %>%
+      raster::trim() %>%
+      raster::as.data.frame(xy = TRUE) %>%
+      na.omit() %>%
+      tibble::as_tibble()
     
   }

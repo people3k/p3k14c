@@ -1,9 +1,11 @@
+#' A custom theme for ggplot maps.
+#'
+#' @param ... Parameters passed on to `theme`
+#'
+#' @export
 theme_map <- 
-  function(base_size = 11, 
-           base_family = "",
-           ...){
-    ggplot2::theme_minimal(base_size = base_size, 
-                      base_family = base_family) %+replace%
+  function(...){
+    ggplot2::theme_minimal() %+replace%
       ggplot2::theme(
         legend.justification = "left",
         legend.title = element_blank(),

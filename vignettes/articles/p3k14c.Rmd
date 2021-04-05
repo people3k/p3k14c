@@ -1,5 +1,7 @@
 ---
 title: "P3k14C: A synthetic global database of archaeological radiocarbon dates"
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r, include = FALSE}
@@ -11,4 +13,589 @@ knitr::opts_chunk$set(
 
 ```{r setup}
 library(p3k14c)
+library(ggplot2)
+
+dir.create("figures",
+           showWarnings = FALSE,
+           recursive = TRUE)
+
+dir.create("tables",
+           showWarnings = FALSE,
+           recursive = TRUE)
+
+global_admin1 <- 
+  sf::read_sf("https://www.geoboundaries.org/data/geoBoundariesCGAZ-3_0_0/ADM1/simplifyRatio_25/geoBoundariesCGAZ_ADM1.topojson",
+              crs = 4326)
 ```
+
+```{r data}
+# Radiocarbon date data
+p3k14c_data <-
+  p3k14c::p3k14c_data %>%
+  dplyr::count(SiteID,
+               SiteName,
+               Continent,
+               Long,
+               Lat,
+               name = "Dates")
+
+# Count dates/sites
+p3k14c_data %>%
+  dplyr::group_by(Continent) %>%
+  dplyr::summarise(Dates = sum(Dates, na.rm = TRUE),
+                   Sites = dplyr::n()) %>%
+  na.omit() %>%
+  dplyr::arrange(dplyr::desc(Dates))
+
+# Drop non-spatial data for risk analysis
+p3k14c_data %<>%
+  tidyr::drop_na(Long, Lat) %>%
+  sf::st_as_sf(
+    coords = c("Long", "Lat"),
+    crs = "EPSG:4326",
+    remove = FALSE
+  ) %>%
+  # Transform to equal earth projection (EPSG 8857)
+  sf::st_transform("EPSG:8857")
+
+```
+
+```{r summary tables}
+
+here::here("vignettes/articles/raw_data/p3k14c_raw.csv") %>%
+  readr::read_csv(col_types = 
+                    readr::cols(
+                      Age = readr::col_double(),
+                      Error = readr::col_double(),
+                      .default = readr::col_character()
+                    )) %>% 
+  dplyr::group_by(Continent) %>% 
+  dplyr::summarize(
+    `N Raw Dates (including duplicates)` = dplyr::n()
+  ) %>%
+  dplyr::left_join(
+    p3k14c::p3k14c_data %>% 
+      dplyr::group_by(Continent) %>% 
+      dplyr::summarize(
+        `N Scrubbed Dates` = dplyr::n(),
+        `Mean Error (years)` = mean(Error, na.rm = TRUE),
+        `Median Error (years)` = median(Error, na.rm = TRUE)
+      )
+  )  %>%
+  dplyr::mutate(`% Dates Retained` = 
+                  100 * `N Scrubbed Dates` / 
+                  `N Raw Dates (including duplicates)`) %>%
+  dplyr::select(Continent,
+                `N Raw Dates (including duplicates)`,
+                `N Scrubbed Dates`,
+                `% Dates Retained`,
+                `Mean Error (years)`,
+                `Median Error (years)`) %T>%
+  readr::write_csv(
+    "tables/p3k14c_continental_summary.csv"
+  )
+
+```
+
+```{r global-map}
+# World map with radiocarbon dates
+ggplot() +
+  geom_sf(data = p3k14c::world) +
+  geom_sf(data = p3k14c_data,
+          mapping = aes(color = Continent,
+                        fill = Continent),
+          alpha = 0.2,
+          size = 0.75,
+          shape = 19,
+          stroke = 0) +
+  geom_sf_text(data = 
+                 tibble::tibble(
+                   x = c(-180,-180,-180),
+                   y = c(-50,0,50),
+                   label = c("50ºS", "0º","50ºN")
+                 ) %>%
+                 sf::st_as_sf(coords = c("x","y"),
+                              crs = 4326),
+               mapping = aes(label = label),
+               size = 3,
+               colour = "grey30",
+               hjust = 1.5) +
+  scale_x_continuous(expand = ggplot2::expansion(0.05,0)) +
+  scale_y_continuous(expand = ggplot2::expansion(0,0)) +
+  ggplot2::labs(x = NULL, y = NULL) +
+  theme_map(legend.position = c(0.1,0.5)) +
+  guides(colour = guide_legend(override.aes = list(size = 3,
+                                                   alpha = 1)))
+
+world_plot_ratio <- 
+  p3k14c::world %>%
+  sf::st_bbox()  %>%
+  as.list() %$% 
+  {(ymax - ymin) / (xmax - xmin)}
+
+fig_width <- 7
+fig_height <- fig_width * world_plot_ratio
+
+ggplot2::ggsave(
+  filename = "figures/Figure3_global_map.pdf",
+  width = fig_width,
+  height = fig_height,
+  units = "in"
+)
+
+ggplot2::ggsave(
+  filename = "figures/Figure3_global_map.png",
+  width = fig_width,
+  height = fig_height,
+  units = "in"
+)
+```
+
+```{r risk-ppp, fig.align='center', fig.width=7, fig.height=8}
+# Spatial windows for risk analysis
+windows <-
+  list(
+    
+    # Northwestern Europe in Albers Equal Area Conic (ESRI 102013)
+    `Northwestern Europe` = p3k14c::nw_europe,
+    
+    # Contiguous USA in Albers Equal Area Conic (ESRI 102003)
+    `United States` = p3k14c::conus
+    
+  )
+
+# A function to calculate KDEs and risk surface
+as_risk_ppp <- 
+  function(x, w, ...){
+    x %<>%
+      # Transform to window projection
+      sf::st_transform(sf::st_crs(w)) %>%
+      # Cast to a Spatial Points object
+      sf::as_Spatial() %>%
+      # Cast to a Point Pattern object
+      maptools::as.ppp.SpatialPointsDataFrame() %>%
+      # Window to extend KDE around globe
+      window(
+        w %>%
+          sf::st_bbox() %>%
+          sf::st_as_sfc() %>%
+          sf::as_Spatial() %>%
+          maptools::as.owin.SpatialPolygons()
+      )
+    
+    # Oversmoothing (OS) bandwidth selector
+    h0 <- 
+      sparr::OS(x, nstar="npoints")
+    
+    # Create a KDE of the sites
+    sites <- 
+      sparr::bivariate.density(pp = x, 
+                               h0 = h0, 
+                               adapt = FALSE, 
+                               edge = "none",
+                               ...)
+    
+    # Create a KDE of the sites, 
+    # weighted by the number of dates at each site
+    dates <-   
+      sparr::bivariate.density(pp = x, 
+                               h0 = h0, 
+                               adapt = FALSE, 
+                               edge = "none",
+                               weights = x$marks$Dates,
+                               ...)
+    
+    # Calculate the spatial relative risk/density ratio
+    risk <-
+      sparr::risk(sites,
+                  dates,
+                  tolerate = TRUE,
+                  ...)
+    
+    # Get two-sided tolerance values
+    risk$P$v <-
+      risk$P %>%
+      as.matrix() %>%
+      { 2 * pmin(., 1 - .) }
+    
+    tibble::lst(
+      window = w,
+      sites,
+      dates,
+      risk
+    )
+    
+  }
+
+# A function to handle plotting
+plot_risk <- 
+  function(x){
+    
+    x$sites %<>%
+      as_raster.bivden(crs = as(sf::st_crs(x$window), "CRS"),
+                       crop = x$window)
+    
+    x$dates %<>%
+      as_raster.bivden(crs = as(sf::st_crs(x$window), "CRS"),
+                       crop = x$window)
+    
+    x$risk %<>%
+      as_raster.rrs(crs = as(sf::st_crs(x$window), "CRS"),
+                    crop = x$window)
+    
+    kde_range = c(0, max(c(x$sites$layer, x$dates$layer), na.rm = TRUE))
+    
+    x[c("sites","dates")] %<>%
+      purrr::imap(
+        ~(
+          ggplot() +
+            geom_tile(data = .x,
+                      mapping = aes(x = x,
+                                    y = y,
+                                    fill = layer)) +
+            geom_sf(data = x$window,
+                    fill = "transparent",
+                    color = "black") +
+            scale_fill_viridis_c(option = "C",
+                                 name = paste0("Kernel Density Estimate of C14 ", 
+                                               stringr::str_to_title(.y)),
+                                 guide = guide_colourbar(
+                                   title.position="top", 
+                                   title.hjust = 0
+                                 ),
+                                 limits = kde_range) +
+            theme_map() +
+            theme(legend.position = c(0,1),
+                  legend.justification = c(0, 0),
+                  legend.direction = "horizontal",
+                  legend.title = element_text(),
+                  legend.key.width = unit(0.075, 'npc'),
+                  legend.key.height = unit(0.02, 'npc'))
+        )
+      )
+    
+    x[c("risk")] %<>%
+      purrr::map(
+        ~(
+          ggplot() +
+            geom_tile(data = .x,
+                      mapping = aes(x = x,
+                                    y = y,
+                                    fill = rr)) +
+            geom_sf(data = x$window,
+                    fill = "transparent",
+                    color = "black") +
+            geom_contour(data = .x,
+                         mapping = aes(x = x, 
+                                       y = y,
+                                       z = p),
+                         breaks = 0.05,
+                         colour = "white") +
+            scale_fill_viridis_c(option = "C",
+                                 name = "Relative Risk/Density Ratio",
+                                 limits = c(-0.5,0.5),
+                                 guide = guide_colourbar(
+                                   title.position="top", 
+                                   title.hjust = 0
+                                 )) +
+            theme_map() +
+            theme(legend.position = c(0,1),
+                  legend.justification = c(0, 0),
+                  legend.direction = "horizontal",
+                  legend.title = element_text(),
+                  legend.key.width = unit(0.075, 'npc'),
+                  legend.key.height = unit(0.02, 'npc'))
+          
+        )
+      )
+    
+    x[c("sites","dates","risk")]
+  }
+
+# Generate the plots
+p3k14c_plots <-
+  windows %>%
+  purrr::map(~as_risk_ppp(x = p3k14c_data,
+                          w = .x,
+                          resolution = 1000)) %>%
+  purrr::map(plot_risk)
+
+ggpubr::ggarrange( 
+  plotlist = 
+    p3k14c_plots %>% 
+    purrr::transpose() %>%
+    unlist(recursive = FALSE),
+  ncol = 2,
+  nrow = 3,
+  align = "none",
+  labels = 
+    c("A","B","C","D","E","F"),
+  legend = "top"
+)
+
+ggplot2::ggsave(
+  filename = "figures/Figure4_risk.pdf",
+  width = 7,
+  height = 8,
+  units = "in"
+)
+
+ggplot2::ggsave(
+  filename = "figures/Figure4_risk.png",
+  width = 7,
+  height = 8,
+  units = "in"
+)
+
+```
+
+```{r quality assessment}
+# Regions for quality assessment
+regions <-
+  list(
+    `China (provinces)` = 
+      # Data from Hosner et al. 2016, 
+      # which provides site count by province for China
+      readr::read_tsv("https://doi.pangaea.de/10.1594/PANGAEA.860072?format=textfile",
+                      skip = 20) %>%
+      dplyr::select(
+        Province = Volume
+      ) %>%
+      dplyr::mutate(Province = factor(Province),
+                    Province = forcats::fct_recode(Province,
+                                                   Xizang = "Tibet Autonomous Region",
+                                                   `Inner Mongol` = "Inner Mongolia Autonomous Region",
+                                                   Ningxia = "Ningxia Hui Autonomous Region",
+                                                   Xinjiang = "Xinjiang Uyghur Autonomous Region"),
+                    Province = as.character(Province)) %>%
+      dplyr::group_by(Province) %>%
+      dplyr::count(name = "Recorded Sites") %>%
+      dplyr::left_join(
+        p3k14c::p3k14c_data %>%
+          dplyr::filter(Country == "China") %>%
+          dplyr::group_by(Province, Long,Lat, SiteID, SiteName) %>%
+          dplyr::count(name = "Dates") %>%
+          dplyr::group_by(Province) %>%
+          dplyr::summarise(`Dated Sites` = dplyr::n(),
+                           Dates = sum(Dates))
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::left_join(
+        rnaturalearth::ne_states(country = "China",
+                                 returnclass = "sf") %>%
+          dplyr::select(Province = name)
+        
+      ) %>%
+      dplyr::arrange(Province) %>%
+      sf::st_as_sf() %>%
+      sf::st_transform("+proj=aea +lat_1=27 +lat_2=45 +lat_0=35 +lon_0=105 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs") %>%
+      dplyr::mutate(Area = sf::st_area(geometry) %>%
+                      units::set_units("km^2"),
+                    `Recorded Sites per km2` = `Recorded Sites`/Area,
+                    `Dated Sites per km2` = `Dated Sites`/Area,
+                    `Dates per km2` = Dates/Area)
+    ,
+    `Western Africa (countries)` = 
+      # Data from Kay et al. 2019, 
+      # which provides site data by country for Western Africa
+      here::here("inst/western_africa_sites.csv") %>%
+      readr::read_csv() %>%
+      dplyr::mutate(Country = factor(Country),
+                    Country = forcats::fct_recode(Country,
+                                                  `Burkina Faso` = "BurkinaFaso",
+                                                  `Central African Republic` = "CAR",
+                                                  `Comoros Islands` = "ComorosIslands",
+                                                  `Democratic Republic of the Congo` = "DRC",
+                                                  `Equatorial Guinea` = "Equat.Guinea",
+                                                  `Gran Canaria` = "GranCanaria,Spain",
+                                                  `Sierra Leone` = "SierraLeone",
+                                                  `South Africa` = "SouthAfrica",
+                                                  `Western Sahara` = "WesternSahara"),
+                    Country = as.character(Country)) %>%
+      dplyr::filter(
+        Country %in% c("Benin",
+                       "Burkina Faso",
+                       "Cameroon",
+                       "Chad",
+                       "Congo",
+                       "Democratic Republic of the Congo",
+                       "Equatorial Guinea",
+                       "Gabon",
+                       "Ghana",
+                       "Guinea",
+                       "IvoryCoast",
+                       "Liberia",
+                       "Mali",
+                       "Mauritania",
+                       "Niger",
+                       "Nigeria",
+                       "Togo")) %>%
+      dplyr::group_by(Country) %>%
+      dplyr::count(name = "Recorded Sites") %>%
+      dplyr::left_join(
+        p3k14c::p3k14c_data %>%
+          dplyr::group_by(Country, Long, Lat, SiteID, SiteName) %>%
+          dplyr::count(name = "Dates") %>%
+          dplyr::group_by(Country) %>%
+          dplyr::summarise(`Dated Sites` = dplyr::n(),
+                           Dates = sum(Dates))
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::left_join(
+        rnaturalearth::ne_countries(continent = "africa",
+                                    returnclass = "sf") %>%
+          dplyr::select(Country = admin) %>%
+          dplyr::mutate(Country = ifelse(Country == "Ivory Coast", 
+                                         "IvoryCoast", 
+                                         Country),
+                        Country = ifelse(Country == "Republic of Congo", 
+                                         "Congo", 
+                                         Country)
+          )
+      ) %>%
+      dplyr::arrange(Country) %>%
+      sf::st_as_sf() %>%
+      sf::st_transform("ESRI:102022") %>%
+      dplyr::mutate(Area = sf::st_area(geometry) %>%
+                      units::set_units("km^2"),
+                    `Recorded Sites per km2` = `Recorded Sites`/Area,
+                    `Dated Sites per km2` = `Dated Sites`/Area,
+                    `Dates per km2` = Dates/Area),
+    
+    # Contiguous USA in Albers Equal Area Conic (ESRI 102003)
+    `United States` = 
+      # Data from many sources documented in conus_site_counts.csv
+      here::here("inst/conus_site_counts.csv") %>%
+      readr::read_csv() %>%
+      dplyr::select(State,
+                    `Recorded Sites` = nSites) %>%
+      dplyr::left_join(
+        p3k14c::p3k14c_data %>%
+          dplyr::filter(Country == "USA") %>%
+          dplyr::group_by(Province, Long,Lat, SiteID, SiteName) %>%
+          dplyr::count(name = "Dates") %>%
+          dplyr::group_by(State = Province) %>%
+          dplyr::summarise(`Dated Sites` = dplyr::n(),
+                           Dates = sum(Dates))
+      ) %>%
+      dplyr::left_join(
+        rnaturalearth::ne_states(country = "United States of America",
+                                 returnclass = "sf") %>%
+          dplyr::select(State = name)
+      ) %>%
+      dplyr::arrange(State) %>%
+      sf::st_as_sf() %>%
+      sf::st_transform("ESRI:102003") %>%
+      dplyr::mutate(Area = sf::st_area(geometry) %>%
+                      units::set_units("km^2"),
+                    `Recorded Sites per km2` = `Recorded Sites`/Area,
+                    `Dated Sites per km2` = `Dated Sites`/Area,
+                    `Dates per km2` = Dates/Area)
+    
+    
+  )
+
+
+# Risk-type regional assessment
+global_dates_sites <-
+  p3k14c::p3k14c_data %>%
+  dplyr::group_by(Continent, Country, Long, Lat, SiteID, SiteName) %>%
+  dplyr::count(name = "Dates") %>%
+  tidyr::drop_na(Long, Lat) %>%
+  sf::st_as_sf(
+    coords = c("Long", "Lat"),
+    crs = "EPSG:4326",
+    remove = FALSE
+  ) %>%
+  sf::st_transform("EPSG:8857") %>%
+  sf::st_intersection(
+    rnaturalearth::ne_states(returnclass = "sf") %>%
+      dplyr::select(`Admin1` = name) %>%
+      sf::st_make_valid() %>%
+      sf::st_transform("EPSG:8857")
+  ) %>%
+  sf::st_drop_geometry() %>%
+  dplyr::group_by(Continent, `Admin1`) %>%
+  dplyr::summarise(`Dated Sites` = dplyr::n(),
+                   Dates = sum(Dates)) %>%
+  dplyr::left_join(
+    rnaturalearth::ne_states(returnclass = "sf") %>%
+      dplyr::select(`Admin1` = name) %>%
+      sf::st_make_valid()
+  ) %>%
+  dplyr::arrange(Continent, `Admin1`) %>%
+  sf::st_as_sf() %>%
+  sf::st_transform("EPSG:8857") %>%
+  dplyr::mutate(Area = sf::st_area(geometry) %>%
+                  units::set_units("km^2"),
+                `Dated Sites per km2` = units::drop_units(`Dated Sites`/Area),
+                `Dates per km2` = units::drop_units(Dates/Area))
+
+global_dates_sites_sma <-
+  global_dates_sites %>%
+  sf::st_drop_geometry() %>%
+dplyr::filter(is.na(`Admin1`))
+  dplyr::summarise(
+    sma = list({
+      smatr::sma(log10(`Dates per km2`) ~ log10(`Dated Sites per km2`), method = "OLS") %$%
+        tibble::tibble(elevation = coef[[1]]$`coef(SMA)`[[1]],
+                       slope = coef[[1]]$`coef(SMA)`[[2]],
+                       p = pval[[1]])
+    })
+  ) %>%
+  tidyr::unnest(sma)
+
+global_dates_sites %>%
+  ggplot(aes(x = `Dated Sites per km2`,
+             y = `Dates per km2`)) +
+  geom_point() +
+  geom_abline(
+    data = global_dates_sites_sma,
+    aes(
+      intercept = elevation,
+      slope = slope
+    ),
+    color = "red"
+  ) +
+  geom_text(
+    data = global_dates_sites_sma,
+    aes(
+      x = 0, 
+      y = Inf,
+      label = paste0("m = ", round(slope, 2),"\n",
+                     ifelse(p < 0.00001, "P << 0.001",
+                            paste("p =", round(p, 6))
+                     )
+      )),
+      hjust = 0,
+      vjust = 1.25,
+      color = "red"
+    ) +
+      scale_x_log10() +
+      scale_y_log10() +
+      labs(
+        x = expression("Dated Sites per" ~ km^2),
+        y = expression("Dates per" ~ km^2)
+      ) +
+      theme_map(strip.text=element_text(size = 12,
+                                        face = "bold", 
+                                        hjust = 0)) +
+      facet_wrap("Continent", 
+                 ncol = 2)
+    
+ggplot2::ggsave(
+  filename = "figures/Figure6_continent_bias.pdf",
+  width = 7,
+  height = 9,
+  units = "in"
+)
+
+ggplot2::ggsave(
+  filename = "figures/Figure6_continent_bias.png",
+  width = 7,
+  height = 9,
+  units = "in"
+)
+    
+    ```
+    

@@ -1,3 +1,16 @@
+#' The scrubbed and fuzzed p3k14c dataset
+#'
+#' The dates in this dataset were gathered from 40 pre-existing datasets, 
+#' verified, and cleaned according to a standardized sample selection criteria. 
+#' Dates for the United States and Canada are aggregated to county level, 
+#' while locational information for dates from one dataset 
+#' (Guedes and Bocinsky 2018) have been truncated to 2 decimal points. 
+#' All dates are uncalibrated.
+#'
+#' @format An object of class `tibble`.
+#' @source \url{https://core.tdar.org/dataset/459163/p3k14c}
+"p3k14c_data"
+
 #' World land area.
 #'
 #' A `MULTIPOLYGON` of global land area.
