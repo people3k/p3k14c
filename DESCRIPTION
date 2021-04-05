@@ -43,7 +43,8 @@ Imports:
     ggplot2,
     ggpubr,
     smatr,
-    forcats
+    forcats,
+    raster
 Depends: 
     R (>= 2.10),
     magrittr,

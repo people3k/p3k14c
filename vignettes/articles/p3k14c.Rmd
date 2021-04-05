@@ -24,8 +24,9 @@ dir.create("tables",
            recursive = TRUE)
 
 global_admin1 <- 
-  sf::read_sf("https://www.geoboundaries.org/data/geoBoundariesCGAZ-3_0_0/ADM1/simplifyRatio_25/geoBoundariesCGAZ_ADM1.topojson",
-              crs = 4326)
+  # Global Admin 1 boundary dataset
+  "https://www.geoboundaries.org/data/geoBoundariesCGAZ-3_0_0/ADM1/simplifyRatio_25/geoBoundariesCGAZ_ADM1.topojson" %>%
+  sf::read_sf(crs = 4326)
 ```
 
 ```{r data}
@@ -62,7 +63,7 @@ p3k14c_data %<>%
 
 ```{r summary tables}
 
-here::here("vignettes/articles/raw_data/p3k14c_raw.csv") %>%
+here::here("../p3k14c-data/p3k14c_raw.csv") %>%
   readr::read_csv(col_types = 
                     readr::cols(
                       Age = readr::col_double(),
