@@ -60,5 +60,4 @@ as_raster.rrs <-
       raster::as.data.frame(xy = TRUE) %>%
       na.omit() %>%
       tibble::as_tibble()
-    
   }

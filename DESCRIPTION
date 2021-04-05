@@ -42,7 +42,8 @@ Imports:
     here,
     ggplot2,
     ggpubr,
-    smatr
+    smatr,
+    forcats
 Depends: 
     R (>= 2.10),
     magrittr,
