@@ -44,9 +44,14 @@ Imports:
     ggpubr,
     smatr,
     forcats,
-    raster
+    raster,
+    rnaturalearth,
+    rnaturalearthhires (>= 0.2.0),
+    rgeos
 Depends: 
     R (>= 2.10),
     magrittr,
     sf
 Config/testthat/edition: 3
+Remotes: 
+    ropensci/rnaturalearthhires

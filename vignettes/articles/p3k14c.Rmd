@@ -15,6 +15,8 @@ knitr::opts_chunk$set(
 library(p3k14c)
 library(ggplot2)
 
+# options(scipen = 999)
+
 dir.create("figures",
            showWarnings = FALSE,
            recursive = TRUE)
@@ -264,7 +266,8 @@ plot_risk <-
                                    title.position="top", 
                                    title.hjust = 0
                                  ),
-                                 limits = kde_range) +
+                                 limits = kde_range,
+                                 labels = scales::scientific) +
             theme_map() +
             theme(legend.position = c(0,1),
                   legend.justification = c(0, 0),
@@ -350,9 +353,9 @@ ggplot2::ggsave(
 
 ```
 
-```{r quality assessment}
+```{r regional bias}
 # Regions for quality assessment
-regions <-
+regional_dates_sites <-
   list(
     `China (provinces)` = 
       # Data from Hosner et al. 2016, 
@@ -392,9 +395,10 @@ regions <-
       sf::st_transform("+proj=aea +lat_1=27 +lat_2=45 +lat_0=35 +lon_0=105 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs") %>%
       dplyr::mutate(Area = sf::st_area(geometry) %>%
                       units::set_units("km^2"),
-                    `Recorded Sites per km2` = `Recorded Sites`/Area,
-                    `Dated Sites per km2` = `Dated Sites`/Area,
-                    `Dates per km2` = Dates/Area)
+                    `Recorded Sites density` = units::drop_units(`Recorded Sites`/Area) * 10000,
+                    `Dated Sites density` = units::drop_units(`Dated Sites`/Area) * 10000,
+                    `Dates density` = units::drop_units(Dates/Area) * 10000) %>%
+      dplyr::rename(`Study Unit` = Province)
     ,
     `Western Africa (countries)` = 
       # Data from Kay et al. 2019, 
@@ -459,45 +463,124 @@ regions <-
       sf::st_transform("ESRI:102022") %>%
       dplyr::mutate(Area = sf::st_area(geometry) %>%
                       units::set_units("km^2"),
-                    `Recorded Sites per km2` = `Recorded Sites`/Area,
-                    `Dated Sites per km2` = `Dated Sites`/Area,
-                    `Dates per km2` = Dates/Area),
+                    `Recorded Sites density` = units::drop_units(`Recorded Sites`/Area) * 10000,
+                    `Dated Sites density` = units::drop_units(`Dated Sites`/Area) * 10000,
+                    `Dates density` = units::drop_units(Dates/Area) * 10000) %>%
+      dplyr::rename(`Study Unit` = Country)
     
-    # Contiguous USA in Albers Equal Area Conic (ESRI 102003)
-    `United States` = 
-      # Data from many sources documented in conus_site_counts.csv
-      here::here("inst/conus_site_counts.csv") %>%
-      readr::read_csv() %>%
-      dplyr::select(State,
-                    `Recorded Sites` = nSites) %>%
-      dplyr::left_join(
-        p3k14c::p3k14c_data %>%
-          dplyr::filter(Country == "USA") %>%
-          dplyr::group_by(Province, Long,Lat, SiteID, SiteName) %>%
-          dplyr::count(name = "Dates") %>%
-          dplyr::group_by(State = Province) %>%
-          dplyr::summarise(`Dated Sites` = dplyr::n(),
-                           Dates = sum(Dates))
-      ) %>%
-      dplyr::left_join(
-        rnaturalearth::ne_states(country = "United States of America",
-                                 returnclass = "sf") %>%
-          dplyr::select(State = name)
-      ) %>%
-      dplyr::arrange(State) %>%
-      sf::st_as_sf() %>%
-      sf::st_transform("ESRI:102003") %>%
-      dplyr::mutate(Area = sf::st_area(geometry) %>%
-                      units::set_units("km^2"),
-                    `Recorded Sites per km2` = `Recorded Sites`/Area,
-                    `Dated Sites per km2` = `Dated Sites`/Area,
-                    `Dates per km2` = Dates/Area)
-    
-    
-  )
+  ) %>%
+  purrr::map(sf::st_drop_geometry) %>%
+  dplyr::bind_rows(.id = "Region") %>%
+  dplyr::select(Region, 
+                `Study Unit`, 
+                `Recorded Sites density`, 
+                `Dated Sites density`, 
+                `Dates density`) %>%
+  dplyr::rename(Recorded = `Recorded Sites density`,
+                Dated = `Dated Sites density`) %>%
+  tidyr::pivot_longer(Recorded:Dated,
+                      names_to = "Site Type",
+                      values_to = "Sites density") %>%
+  dplyr::mutate(Region = factor(Region,
+                                levels = c("China (provinces)",
+                                           "Western Africa (countries)"),
+                                labels = c(
+                                  "China (provinces)",
+                                  "W. Africa (countries)"
+                                ),
+                                ordered = TRUE),
+                `Site Type` = factor(`Site Type`,
+                                     levels = c("Recorded",
+                                                "Dated"),
+                                     labels = c("Recorded Sites",
+                                                "Dated Sites"),
+                                     ordered = TRUE))
 
+regional_dates_sites_sma <-
+  regional_dates_sites %>%
+  dplyr::group_by(Region, `Site Type`) %>%
+  dplyr::summarise(
+    sma = list({
+      smatr::sma(log10(`Dates density`) ~ log10(`Sites density`)) %$%
+        tibble::tibble(elevation = coef[[1]]$`coef(SMA)`[[1]],
+                       slope = coef[[1]]$`coef(SMA)`[[2]],
+                       p = pval[[1]])
+    })
+  ) %>%
+  tidyr::unnest(sma) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(panel = c("A", "B", "C", "D"))
 
-# Risk-type regional assessment
+regional_dates_sites %>%
+  # dplyr::rename(Site_Type = `Site Type`) %>%
+  ggplot(aes(x = `Sites density`,
+             y = `Dates density`)) +
+  geom_point() +
+  geom_abline(
+    data = regional_dates_sites_sma,
+    aes(
+      intercept = elevation,
+      slope = slope
+    ),
+    color = "red"
+  ) +
+  geom_text(
+    data = regional_dates_sites_sma,
+    aes(
+      x = 0,
+      y = Inf,
+      label = paste0("m = ", round(slope, 3),"\n",
+                     ifelse(p < 0.001, "P < 0.001",
+                            paste("p =", round(p, 3))
+                     )
+      )),
+    hjust = -0.1,
+    vjust = 2.5,
+    color = "red"
+  ) +
+  geom_text(
+    data = regional_dates_sites_sma,
+    aes(
+      x = 0,
+      y = Inf,
+      label = panel
+    ),
+    hjust = -0.1,
+    vjust = 1.1,
+    size = 10,
+    fontface = "bold"
+  ) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = expression("Sites per 10,000" ~ km^2),
+    y = expression("Dates per 10,000" ~ km^2)
+  ) +
+  theme_map(strip.text = element_text(size = 12,
+                                      face = "bold", 
+                                      hjust = 0.5)) +
+  theme(axis.title = ggplot2::element_text(),
+        plot.margin = ggplot2::margin(t = 1, r = 5, b = 1, l = 1, unit = "mm")) +
+  facet_grid(Region ~ `Site Type`)
+
+ggplot2::ggsave(
+  filename = "figures/Figure5_regional_quality_assessment.pdf",
+  width = 7,
+  height = 9/2,
+  units = "in"
+)
+
+ggplot2::ggsave(
+  filename = "figures/Figure5_regional_quality_assessment.png",
+  width = 7,
+  height = 9/2,
+  units = "in"
+)
+
+```
+
+```{r global bias, fig.align='center', fig.width=7, fig.height=9}
+# Risk-type global assessment by continent
 global_dates_sites <-
   p3k14c::p3k14c_data %>%
   dplyr::group_by(Continent, Country, Long, Lat, SiteID, SiteName) %>%
@@ -529,26 +612,38 @@ global_dates_sites <-
   sf::st_transform("EPSG:8857") %>%
   dplyr::mutate(Area = sf::st_area(geometry) %>%
                   units::set_units("km^2"),
-                `Dated Sites per km2` = units::drop_units(`Dated Sites`/Area),
-                `Dates per km2` = units::drop_units(Dates/Area))
+                `Dated Sites density` = units::drop_units(`Dated Sites`/Area) * 10000,
+                `Dates density` = units::drop_units(Dates/Area) * 10000) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(Continent = factor(Continent, 
+                                   levels = c("North America",
+                                              "Central America",
+                                              "South America",
+                                              "Europe",
+                                              "Africa",
+                                              "Asia",
+                                              "Australia"),
+                                   ordered = TRUE))
 
 global_dates_sites_sma <-
   global_dates_sites %>%
   sf::st_drop_geometry() %>%
-dplyr::filter(is.na(`Admin1`))
+  dplyr::group_by(Continent) %>%
   dplyr::summarise(
     sma = list({
-      smatr::sma(log10(`Dates per km2`) ~ log10(`Dated Sites per km2`), method = "OLS") %$%
+      smatr::sma(log10(`Dates density`) ~ log10(`Dated Sites density`)) %$%
         tibble::tibble(elevation = coef[[1]]$`coef(SMA)`[[1]],
                        slope = coef[[1]]$`coef(SMA)`[[2]],
                        p = pval[[1]])
     })
   ) %>%
-  tidyr::unnest(sma)
+  tidyr::unnest(sma) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(panel = c("A", "B", "C", "D", "E", "F", "G"))
 
 global_dates_sites %>%
-  ggplot(aes(x = `Dated Sites per km2`,
-             y = `Dates per km2`)) +
+  ggplot(aes(x = `Dated Sites density`,
+             y = `Dates density`)) +
   geom_point() +
   geom_abline(
     data = global_dates_sites_sma,
@@ -563,27 +658,42 @@ global_dates_sites %>%
     aes(
       x = 0, 
       y = Inf,
-      label = paste0("m = ", round(slope, 2),"\n",
-                     ifelse(p < 0.00001, "P << 0.001",
-                            paste("p =", round(p, 6))
+      label = paste0("m = ", round(slope, 3),"\n",
+                     ifelse(p < 0.001, "P < 0.001",
+                            paste("p =", round(p, 3))
                      )
       )),
-      hjust = 0,
-      vjust = 1.25,
-      color = "red"
-    ) +
-      scale_x_log10() +
-      scale_y_log10() +
-      labs(
-        x = expression("Dated Sites per" ~ km^2),
-        y = expression("Dates per" ~ km^2)
-      ) +
-      theme_map(strip.text=element_text(size = 12,
-                                        face = "bold", 
-                                        hjust = 0)) +
-      facet_wrap("Continent", 
-                 ncol = 2)
-    
+    hjust = -0.1,
+    vjust = 2.5,
+    color = "red"
+  ) +
+  geom_text(
+    data = global_dates_sites_sma,
+    aes(
+      x = 0,
+      y = Inf,
+      label = panel
+    ),
+    hjust = -0.1,
+    vjust = 1.1,
+    size = 10,
+    fontface = "bold"
+  ) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = expression("Dated Sites per 10,000" ~ km^2),
+    y = expression("Dates per 10,000" ~ km^2)
+  ) +
+  theme_map(strip.text = element_text(size = 12,
+                                      face = "bold", 
+                                      hjust = 0.5)) +
+  theme(axis.title = ggplot2::element_text(),
+        plot.margin = ggplot2::margin(t = 1, r = 5, b = 1, l = 1, unit = "mm")
+  ) +
+  facet_wrap("Continent", 
+             ncol = 2)
+
 ggplot2::ggsave(
   filename = "figures/Figure6_continent_bias.pdf",
   width = 7,
@@ -597,5 +707,189 @@ ggplot2::ggsave(
   height = 9,
   units = "in"
 )
-    
-    ```
+
+```
+
+```{r conus bias}
+
+conus_counties <- 
+  tigris::counties() %>%
+  dplyr::select(County = NAME, 
+                STATEFP) %>%
+  sf::st_transform(crs = "ESRI:102003") %>%
+  dplyr::left_join(tigris::states() %>%
+                     sf::st_drop_geometry() %>%
+                     dplyr::select(STATEFP, State = NAME)) %>%
+  dplyr::select(County, State) %>%
+  tidyr::unite(County:State, col = "County", sep = ", ")
+
+conus_dates_sites <-
+  list(
+    `State` =
+      # Data from many sources documented in conus_site_counts.csv
+      here::here("inst/conus_site_counts.csv") %>%
+      readr::read_csv() %>%
+      dplyr::select(State,
+                    `Recorded Sites` = nSites) %>%
+      na.omit() %>%
+      dplyr::left_join(
+        p3k14c::p3k14c_data %>%
+          dplyr::filter(Country == "USA") %>%
+          dplyr::group_by(Province, Long, Lat, SiteID, SiteName) %>%
+          dplyr::count(name = "Dates") %>%
+          dplyr::group_by(State = Province) %>%
+          dplyr::summarise(`Dated Sites` = dplyr::n(),
+                           Dates = sum(Dates))
+      ) %>%
+      dplyr::left_join(
+        rnaturalearth::ne_states(country = "United States of America",
+                                 returnclass = "sf") %>%
+          dplyr::select(State = name)
+      ) %>%
+      dplyr::arrange(State) %>%
+      sf::st_as_sf() %>%
+      sf::st_transform("ESRI:102003") %>%
+      dplyr::mutate(Area = sf::st_area(geometry) %>%
+                      units::set_units("km^2"),
+                    `Recorded Sites density` = units::drop_units(`Recorded Sites`/Area) * 10000,
+                    `Dated Sites density` = units::drop_units(`Dated Sites`/Area) * 10000,
+                    `Dates density` = units::drop_units(Dates/Area) * 10000) %>%
+      sf::st_drop_geometry() %>%
+      dplyr::select(Name = State,
+                    `Recorded Sites density`, 
+                    `Dated Sites density`, 
+                    `Dates density`) %>%
+      dplyr::rename(Recorded = `Recorded Sites density`,
+                    Dated = `Dated Sites density`) %>%
+      tidyr::pivot_longer(Recorded:Dated,
+                          names_to = "Site Type",
+                          values_to = "Sites density"),
+    `County` =
+      p3k14c::p3k14c_data %>%
+      dplyr::filter(Country == "USA") %>%
+      dplyr::group_by(Province, Long, Lat, SiteID, SiteName) %>%
+      dplyr::count(name = "Dates") %>%
+      tidyr::drop_na(Long, Lat) %>%
+      sf::st_as_sf(coords = c("Long", "Lat"),
+                   crs = "EPSG:4326") %>%
+      sf::st_transform("ESRI:102003") %>%
+      sf::st_intersection(
+        conus_counties
+      ) %>%
+      sf::st_drop_geometry() %>%
+      dplyr::group_by(County) %>%
+      dplyr::summarise(`Dated Sites` = dplyr::n(),
+                       Dates = sum(Dates)) %>%
+      dplyr::left_join(
+        conus_counties
+      ) %>%
+      dplyr::arrange(County) %>%
+      sf::st_as_sf() %>%
+      dplyr::mutate(Area = sf::st_area(geometry) %>%
+                      units::set_units("km^2"),
+                    `Dated Sites density` = units::drop_units(`Dated Sites`/Area) * 10000,
+                    `Dates density` = units::drop_units(Dates/Area) * 10000) %>%
+      sf::st_drop_geometry() %>%
+      dplyr::select(Name = County, 
+                    `Dated Sites density`, 
+                    `Dates density`) %>%
+      dplyr::rename(Dated = `Dated Sites density`) %>%
+      tidyr::pivot_longer(Dated,
+                          names_to = "Site Type",
+                          values_to = "Sites density")
+  ) %>%
+  dplyr::bind_rows(.id = "Scale") %>%
+  dplyr::mutate(Scale = factor(Scale, 
+                                   levels = c("State",
+                                              "County"),
+                                   ordered = TRUE),
+                `Site Type` = factor(`Site Type`,
+                                     levels = c("Recorded",
+                                              "Dated"),
+                                   ordered = TRUE)
+                ) %>%
+  dplyr::arrange(dplyr::desc(`Dates density`))
+
+
+conus_dates_sites_sma <-
+  conus_dates_sites %>%
+  dplyr::group_by(Scale, `Site Type`) %>%
+  dplyr::summarise(
+    sma = list({
+      smatr::sma(log10(`Dates density`) ~ log10(`Sites density`)) %$%
+        tibble::tibble(elevation = coef[[1]]$`coef(SMA)`[[1]],
+                       slope = coef[[1]]$`coef(SMA)`[[2]],
+                       p = pval[[1]])
+    })
+  ) %>%
+  tidyr::unnest(sma) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(panel = c("A", "B", "C"))
+
+conus_dates_sites %>%
+  ggplot(aes(x = `Sites density`,
+             y = `Dates density`)) +
+  geom_point() +
+  geom_abline(
+    data = conus_dates_sites_sma,
+    aes(
+      intercept = elevation,
+      slope = slope
+    ),
+    color = "red"
+  ) +
+  geom_text(
+    data = conus_dates_sites_sma,
+    aes(
+      x = 0, 
+      y = Inf,
+      label = paste0("m = ", round(slope, 3),"\n",
+                     ifelse(p < 0.001, "P < 0.001",
+                            paste("p =", round(p, 3))
+                     )
+      )),
+    hjust = -0.1,
+    vjust = 2.5,
+    color = "red"
+  ) +
+  geom_text(
+    data = conus_dates_sites_sma,
+    aes(
+      x = 0,
+      y = Inf,
+      label = panel
+    ),
+    hjust = -0.1,
+    vjust = 1.1,
+    size = 10,
+    fontface = "bold"
+  ) +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(
+    x = expression("Dated Sites per 10,000" ~ km^2),
+    y = expression("Dates per 10,000" ~ km^2)
+  ) +
+  theme_map(strip.text = element_text(size = 12,
+                                      face = "bold", 
+                                      hjust = 0.5)) +
+  theme(axis.title = ggplot2::element_text(),
+        plot.margin = ggplot2::margin(t = 1, r = 5, b = 1, l = 1, unit = "mm")
+  ) +
+  facet_grid(Scale ~ `Site Type`)
+
+ggplot2::ggsave(
+  filename = "figures/Figure7_conus_bias.pdf",
+  width = 7,
+  height = 9/2,
+  units = "in"
+)
+
+ggplot2::ggsave(
+  filename = "figures/Figure7_conus_bias.png",
+  width = 7,
+  height = 9/2,
+  units = "in"
+)
+
+```
