@@ -2,6 +2,12 @@
 title: "P3k14C: A synthetic global database of archaeological radiocarbon dates"
 editor_options: 
   chunk_output_type: console
+html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    number_sections: false
+    code_folding: hide
 ---
 
 ```{r, include = FALSE}

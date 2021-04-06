@@ -13,7 +13,8 @@ p3k14c_data <-
                       LocAccuracy = readr::col_double(),
                       .default = readr::col_character()
                     ))
-usethis::use_data(p3k14c_data)
+usethis::use_data(p3k14c_data,
+                  overwrite = TRUE)
 
 # Download low resolution land area of Earth
 download.file(
