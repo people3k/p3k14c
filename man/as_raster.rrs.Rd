@@ -8,6 +8,11 @@ as_raster.rrs(x, crs, crop = NULL)
 }
 \arguments{
 \item{x}{An object of class \code{rrs}}
+
+\item{crs}{Coordinate reference system, something suitable
+as input to \code{st_crs}}
+
+\item{crop}{\code{sf} object to which to crop the raster}
 }
 \value{
 A raster

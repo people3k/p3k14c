@@ -3,3 +3,7 @@
 ^LICENSE\.md$
 ^data-raw$
 ^vignettes/articles$
+analysis
+^_pkgdown\.yml$
+^docs$
+^pkgdown$

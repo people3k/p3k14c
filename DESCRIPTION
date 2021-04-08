@@ -1,18 +1,18 @@
 Package: p3k14c
 Title: P3k14C: A Synthetic Global Database of Archaeological Radiocarbon Dates
 Version: 0.0.0.9000
-Authors@R: 
+Authors@R:
     c(
-    person(given = "Darcy",
-           family = "Bird",
-           role = c("aut", "cre"),
-           email = "darcy.bird@wsu.edu",
-           comment = c(ORCID = "0000-0003-3466-6284")),
     person(given = "Kyle",
            family = "Bocinsky",
-           role = c("ctb"),
+           role = c("aut", "cre"),
            email = "bocinsky@gmail.com",
            comment = c(ORCID = "0000-0003-1862-3428")),
+    person(given = "Darcy",
+           family = "Bird",
+           role = c("ctb"),
+           email = "darcy.bird@wsu.edu",
+           comment = c(ORCID = "0000-0003-3466-6284")),
     person(given = "Marc",
            family = "Vander Linden",
            role = c("ctb"),
@@ -28,11 +28,14 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 URL: https://github.com/people3k/p3k14c
 BugReports: https://github.com/people3k/p3k14c/issues
-Suggests: 
+Suggests:
     devtools,
     rmarkdown,
-    testthat (>= 3.0.0)
-Imports: 
+    testthat (>= 3.0.0),
+    git2r,
+    pkgdown
+Imports:
+    sf,
     tibble,
     readr,
     dplyr,
@@ -47,11 +50,14 @@ Imports:
     raster,
     rnaturalearth,
     rnaturalearthhires (>= 0.2.0),
-    rgeos
-Depends: 
+    rgeos,
+    bookdown,
+    spatstat.geom,
+    methods,
+    stats
+Depends:
     R (>= 2.10),
-    magrittr,
-    sf
+    magrittr
 Config/testthat/edition: 3
-Remotes: 
+Remotes:
     ropensci/rnaturalearthhires

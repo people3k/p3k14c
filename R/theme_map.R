@@ -2,16 +2,17 @@
 #'
 #' @param ... Parameters passed on to `theme`
 #'
+#' @importFrom ggplot2 `%+replace%`
 #' @export
 theme_map <- 
   function(...){
     ggplot2::theme_minimal() %+replace%
       ggplot2::theme(
         legend.justification = "left",
-        legend.title = element_blank(),
-        legend.background = element_blank(),
-        legend.key.width = unit(0, 'npc'),
-        legend.key.height = unit(0.02, 'npc'),
+        legend.title = ggplot2::element_blank(),
+        legend.background = ggplot2::element_blank(),
+        legend.key.width = ggplot2::unit(0, 'npc'),
+        legend.key.height = ggplot2::unit(0.02, 'npc'),
         axis.line = ggplot2::element_blank(),
         axis.ticks = ggplot2::element_blank(),
         axis.title = ggplot2::element_blank(),

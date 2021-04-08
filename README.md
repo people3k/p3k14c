@@ -36,3 +36,11 @@ You can install the released version of p3k14c from Github with:
 # install.packages("remotes")
 remotes::install_github("people3k/p3k14c")
 ```
+
+## Executable research compendium
+
+You can compile the research compendium with:
+
+``` r
+rmarkdown::render("vignettes/articles/p3k14c.Rmd", output_dir = "vignettes/articles")
+```

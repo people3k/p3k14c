@@ -5,7 +5,7 @@
 #'
 #' @return An object of class `ppp` windowed to `w`
 #' @export
-window.ppp <- 
+window_ppp <- 
   function(x, w){
     spatstat.geom::Window(x) <- w
     x

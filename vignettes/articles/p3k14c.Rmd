@@ -23,11 +23,11 @@ library(ggplot2)
 
 # options(scipen = 999)
 
-dir.create("figures",
+dir.create(here::here("vignettes/articles/figures"),
            showWarnings = FALSE,
            recursive = TRUE)
 
-dir.create("tables",
+dir.create(here::here("vignettes/articles/figures"),
            showWarnings = FALSE,
            recursive = TRUE)
 
@@ -101,7 +101,7 @@ here::here("../p3k14c-data/p3k14c_raw.csv") %>%
                 `Mean Error (years)`,
                 `Median Error (years)`) %T>%
   readr::write_csv(
-    "tables/p3k14c_continental_summary.csv"
+    here::here("vignettes/articles/tables/p3k14c_continental_summary.csv")
   )
 
 ```
@@ -146,14 +146,14 @@ fig_width <- 7
 fig_height <- fig_width * world_plot_ratio
 
 ggplot2::ggsave(
-  filename = "figures/Figure3_global_map.pdf",
+  filename = here::here("vignettes/articles/figures/Figure3_global_map.pdf"),
   width = fig_width,
   height = fig_height,
   units = "in"
 )
 
 ggplot2::ggsave(
-  filename = "figures/Figure3_global_map.png",
+  filename = here::here("vignettes/articles/figures/Figure3_global_map.png"),
   width = fig_width,
   height = fig_height,
   units = "in"
@@ -184,7 +184,7 @@ as_risk_ppp <-
       # Cast to a Point Pattern object
       maptools::as.ppp.SpatialPointsDataFrame() %>%
       # Window to extend KDE around globe
-      window(
+      window_ppp(
         w %>%
           sf::st_bbox() %>%
           sf::st_as_sfc() %>%
@@ -344,14 +344,14 @@ ggpubr::ggarrange(
 )
 
 ggplot2::ggsave(
-  filename = "figures/Figure4_risk.pdf",
+  filename = here::here("vignettes/articles/figures/Figure4_risk.pdf"),
   width = 7,
   height = 8,
   units = "in"
 )
 
 ggplot2::ggsave(
-  filename = "figures/Figure4_risk.png",
+  filename = here::here("vignettes/articles/figures/Figure4_risk.png"),
   width = 7,
   height = 8,
   units = "in"
@@ -359,7 +359,7 @@ ggplot2::ggsave(
 
 ```
 
-```{r regional bias}
+```{r regional-bias}
 # Regions for quality assessment
 regional_dates_sites <-
   list(
@@ -570,14 +570,14 @@ regional_dates_sites %>%
   facet_grid(Region ~ `Site Type`)
 
 ggplot2::ggsave(
-  filename = "figures/Figure5_regional_quality_assessment.pdf",
+  filename = here::here("vignettes/articles/figures/Figure5_regional_quality_assessment.pdf"),
   width = 7,
   height = 9/2,
   units = "in"
 )
 
 ggplot2::ggsave(
-  filename = "figures/Figure5_regional_quality_assessment.png",
+  filename = here::here("vignettes/articles/figures/Figure5_regional_quality_assessment.png"),
   width = 7,
   height = 9/2,
   units = "in"
@@ -585,7 +585,7 @@ ggplot2::ggsave(
 
 ```
 
-```{r global bias, fig.align='center', fig.width=7, fig.height=9}
+```{r global-bias, fig.align='center', fig.width=7, fig.height=9}
 # Risk-type global assessment by continent
 global_dates_sites <-
   p3k14c::p3k14c_data %>%
@@ -701,14 +701,14 @@ global_dates_sites %>%
              ncol = 2)
 
 ggplot2::ggsave(
-  filename = "figures/Figure6_continent_bias.pdf",
+  filename = here::here("vignettes/articles/figures/Figure6_continent_bias.pdf"),
   width = 7,
   height = 9,
   units = "in"
 )
 
 ggplot2::ggsave(
-  filename = "figures/Figure6_continent_bias.png",
+  filename = here::here("vignettes/articles/figures/Figure6_continent_bias.png"),
   width = 7,
   height = 9,
   units = "in"
@@ -716,7 +716,7 @@ ggplot2::ggsave(
 
 ```
 
-```{r conus bias}
+```{r conus-bias}
 
 conus_counties <- 
   tigris::counties() %>%
@@ -814,12 +814,27 @@ conus_dates_sites <-
                                               "Dated"),
                                    ordered = TRUE)
                 ) %>%
-  dplyr::arrange(dplyr::desc(`Dates density`))
-
+  dplyr::arrange(dplyr::desc(`Dates density`)) %>%
+  dplyr::mutate(group = paste0(`Site Type`, " Sites by ", Scale))
 
 conus_dates_sites_sma <-
   conus_dates_sites %>%
-  dplyr::group_by(Scale, `Site Type`) %>%
+  dplyr::group_by(group) %>%
+  dplyr::summarise(
+    sma = list({
+      smatr::sma(`Dates density` ~ `Sites density`) %$%
+        tibble::tibble(elevation = coef[[1]]$`coef(SMA)`[[1]],
+                       slope = coef[[1]]$`coef(SMA)`[[2]],
+                       p = pval[[1]])
+    })
+  ) %>%
+  tidyr::unnest(sma) %>%
+  dplyr::ungroup() %>%
+  dplyr::mutate(panel = c("A", "C", "E"))
+
+conus_dates_sites_sma_log <-
+  conus_dates_sites %>%
+  dplyr::group_by(group) %>%
   dplyr::summarise(
     sma = list({
       smatr::sma(log10(`Dates density`) ~ log10(`Sites density`)) %$%
@@ -830,9 +845,10 @@ conus_dates_sites_sma <-
   ) %>%
   tidyr::unnest(sma) %>%
   dplyr::ungroup() %>%
-  dplyr::mutate(panel = c("A", "B", "C"))
+  dplyr::mutate(panel = c("B", "D", "F"))
 
-conus_dates_sites %>%
+conus_no_log <-
+  conus_dates_sites %>%
   ggplot(aes(x = `Sites density`,
              y = `Dates density`)) +
   geom_point() +
@@ -870,11 +886,70 @@ conus_dates_sites %>%
     size = 10,
     fontface = "bold"
   ) +
-  scale_x_log10() +
-  scale_y_log10() +
+    scale_x_continuous(limits = c(0,NA),
+                expand = expansion(c(0,0.05),0)) +
+  scale_y_continuous(limits = c(0,NA),
+                expand = expansion(c(0,0.05),0)) +
   labs(
-    x = expression("Dated Sites per 10,000" ~ km^2),
+    x = expression("Sites per 10,000" ~ km^2),
     y = expression("Dates per 10,000" ~ km^2)
+  ) +
+  theme_map(strip.text = element_text(size = 12,
+                                      face = "bold",
+                                      hjust = 0.5)) +
+  theme(axis.title = ggplot2::element_text(),
+        plot.margin = ggplot2::margin(t = 1, r = 1, b = 1, l = 1, unit = "mm")
+  ) +
+  facet_wrap(~ group,
+             scales = "free",
+             ncol = 1)
+
+conus_log <-
+  conus_dates_sites %>%
+  ggplot(aes(x = `Sites density`,
+             y = `Dates density`)) +
+  geom_point() +
+  geom_abline(
+    data = conus_dates_sites_sma_log,
+    aes(
+      intercept = elevation,
+      slope = slope
+    ),
+    color = "red"
+  ) +
+  geom_text(
+    data = conus_dates_sites_sma_log,
+    aes(
+      x = 1, 
+      y = Inf,
+      label = paste0("m = ", round(slope, 3),"\n",
+                     ifelse(p < 0.001, "P < 0.001",
+                            paste("p =", round(p, 3))
+                     )
+      )),
+    hjust = -0.1,
+    vjust = 2.5,
+    color = "red"
+  ) +
+  geom_text(
+    data = conus_dates_sites_sma_log,
+    aes(
+      x = 1,
+      y = Inf,
+      label = panel
+    ),
+    hjust = -0.1,
+    vjust = 1.1,
+    size = 10,
+    fontface = "bold"
+  ) +
+  scale_x_log10(limits = c(1,10000),
+                expand = expansion(c(0,0.05),0)) +
+  scale_y_log10(limits = c(1,100000),
+                expand = expansion(c(0,0.05),0)) +
+  labs(
+    x = expression("Sites per 10,000" ~ km^2),
+    y = NULL
   ) +
   theme_map(strip.text = element_text(size = 12,
                                       face = "bold", 
@@ -882,20 +957,57 @@ conus_dates_sites %>%
   theme(axis.title = ggplot2::element_text(),
         plot.margin = ggplot2::margin(t = 1, r = 5, b = 1, l = 1, unit = "mm")
   ) +
-  facet_grid(Scale ~ `Site Type`)
+  facet_wrap(~ group,
+             ncol = 1)
+
+ggpubr::ggarrange( 
+  conus_no_log,
+  conus_log,
+  ncol = 2,
+  align = "hv"
+)
 
 ggplot2::ggsave(
-  filename = "figures/Figure7_conus_bias.pdf",
+  filename = here::here("vignettes/articles/figures/Figure7_conus_bias.pdf"),
   width = 7,
-  height = 9/2,
+  height = 9 * (3/4),
   units = "in"
 )
 
 ggplot2::ggsave(
-  filename = "figures/Figure7_conus_bias.png",
+  filename = here::here("vignettes/articles/figures/Figure7_conus_bias.png"),
   width = 7,
-  height = 9/2,
+  height = 9 * (3/4),
   units = "in"
 )
 
 ```
+
+\newpage
+
+# References 
+
+<!-- The following line ensures the references appear here for the MS Word or HTML output files, rather than right at the end of the document (this will not work for PDF files):  -->
+
+<div id="refs"></div>
+
+\newpage
+
+### Colophon
+
+This report was generated on `r Sys.time()` using the following computational environment and dependencies: 
+
+```{r colophon, cache = FALSE}
+# which R packages and versions?
+if ("devtools" %in% installed.packages()) devtools::session_info()
+```
+
+The current Git commit details are:
+
+```{r}
+# what commit is this file at? 
+if ("git2r" %in% installed.packages() & git2r::in_repository(path = ".")) git2r::repository(here::here())  
+```
+
+
+
