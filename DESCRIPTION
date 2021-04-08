@@ -28,12 +28,9 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 URL: https://people3k.github.io/p3k14c, https://github.com/people3k/p3k14c
 BugReports: https://github.com/people3k/p3k14c/issues
-Suggests:
-    devtools,
-    rmarkdown,
-    testthat (>= 3.0.0),
-    git2r,
-    pkgdown
+Depends:
+    R (>= 2.10),
+    magrittr
 Imports:
     sf,
     tibble,
@@ -55,9 +52,12 @@ Imports:
     spatstat.geom,
     methods,
     stats
-Depends:
-    R (>= 2.10),
-    magrittr
-Config/testthat/edition: 3
 Remotes:
     ropensci/rnaturalearthhires
+Suggests:
+    devtools,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    git2r,
+    pkgdown
+Config/testthat/edition: 3
