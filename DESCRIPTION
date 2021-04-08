@@ -3,19 +3,19 @@ Title: P3k14C: A Synthetic Global Database of Archaeological Radiocarbon Dates
 Version: 0.0.0.9000
 Authors@R:
     c(
+    person(given = "Darcy",
+           family = "Bird",
+           role = c("aut", "ctb"),
+           email = "darcy.bird@wsu.edu",
+           comment = c(ORCID = "0000-0003-3466-6284")),
     person(given = "Kyle",
            family = "Bocinsky",
            role = c("aut", "cre"),
            email = "bocinsky@gmail.com",
            comment = c(ORCID = "0000-0003-1862-3428")),
-    person(given = "Darcy",
-           family = "Bird",
-           role = c("ctb"),
-           email = "darcy.bird@wsu.edu",
-           comment = c(ORCID = "0000-0003-3466-6284")),
     person(given = "Marc",
            family = "Vander Linden",
-           role = c("ctb"),
+           role = c("aut", "ctb"),
            email = "mvanderlinden@bournemouth.ac.uk",
            comment = c(ORCID = "0000-0002-0120-7754"))
            )
