@@ -70,7 +70,6 @@ p3k14c_data %<>%
 ```
 
 ```{r summary tables}
-
 here::here("../p3k14c-data/p3k14c_raw.csv") %>%
   readr::read_csv(col_types = 
                     readr::cols(

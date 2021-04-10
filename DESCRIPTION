@@ -1,6 +1,6 @@
 Package: p3k14c
 Title: P3k14C: A Synthetic Global Database of Archaeological Radiocarbon Dates
-Version: 0.0.0.9000
+Version: 0.9.0
 Authors@R:
     c(
     person(given = "Darcy",
@@ -51,7 +51,8 @@ Imports:
     bookdown,
     spatstat.geom,
     methods,
-    stats
+    stats,
+    bocinsky/tdar
 Remotes:
     ropensci/rnaturalearthhires
 Suggests:

@@ -32,7 +32,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="index.html">p3k14c</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.0.0.9000</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="Released version">0.9.0</span>
       </span>
     </div>
 
@@ -74,8 +74,8 @@
 <div class="page-header"><h1 class="hasAnchor">
 <a href="#p3k14c" class="anchor"></a>p3k14c</h1></div>
 <!-- badges: start -->
-<!-- badges: end -->
-<p>This is the submission release for the P3K14C data publication:</p>
+
+<p>This repository contains the data and code for our paper:</p>
 <blockquote>
 <p>Darcy Bird <a href="https://orcid.org/0000-0003-3466-6284"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Lux Miranda <a href="https://orcid.org/0000-0002-3753-7405"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Marc Vander Linden <a href="https://orcid.org/0000-0002-0120-7754"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Robinson, Erick <a href="https://orcid.org/0000-0002-0789-3724"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, R. Kyle Bocinsky <a href="https://orcid.org/0000-0003-1862-3428"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Chris Nicholson <a href="https://orcid.org/0000-0003-3212-2662"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, José M. Capriles <a href="https://orcid.org/0000-0001-6046-0939"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Judson Byrd Finley <a href="https://orcid.org/0000-0003-0233-8630"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Eugenia M. Gayo <a href="https://orcid.org/0000-0003-0746-0512"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Adolfo Gil <a href="https://orcid.org/0000-0001-5718-8866"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Jade d’Alpoim Guedes <a href="https://orcid.org/0000-0002-2627-7863"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Julie A. Hoggarth <a href="https://orcid.org/0000-0001-8612-8846"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Andrea Kay <a href="https://orcid.org/0000-0001-8285-1893"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Emma Loftus <a href="https://orcid.org/0000-0003-4442-8511"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Umberto Lombardo <a href="https://orcid.org/0000-0002-0001-4870"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Madeline Mackie <a href="https://orcid.org/0000-0003-0769-2348"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Alessio Palmisano <a href="https://orcid.org/0000-0003-0758-5032"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Steinar Solheim <a href="https://orcid.org/0000-0001-8293-8147"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Jacob Freeman <a href="https://orcid.org/0000-0001-7402-8450"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, Robert L. Kelly<a href="https://orcid.org/0000-0001-9737-0152"><img src="https://orcid.org/sites/default/files/images/orcid_16x16.png"></a>, ( <strong>In review</strong>). p3k14c: A synthetic global database of archaeological radiocarbon dates.</p>
 </blockquote>
@@ -93,6 +93,62 @@
 <p>You can compile the research compendium with:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span class="fu">rmarkdown</span><span class="fu">::</span><span class="fu"><a href="https://pkgs.rstudio.com/rmarkdown/reference/render.html">render</a></span><span class="op">(</span><span class="st">"vignettes/articles/p3k14c.Rmd"</span>, output_dir <span class="op">=</span> <span class="st">"vignettes/articles"</span><span class="op">)</span></code></pre></div>
+<div id="how-to-cite" class="section level3">
+<h3 class="hasAnchor">
+<a href="#how-to-cite" class="anchor"></a>How to cite</h3>
+<p>Please cite this compendium as:</p>
+<blockquote>
+<p>Bocinsky, R. Kyle, Darcy Bird, and Erick Robinson, (2020). <em>Compendium of R code and data for Dendrochronological dates confirm a Late Prehistoric population decline in the American Southwest derived from radiocarbon dates</em>. Accessed <span class="math display"><em>T</em><em>O</em><em>D</em><em>A</em><em>Y</em>′<em>S</em><em>D</em><em>A</em><em>T</em><em>E</em></span>.</p>
+</blockquote>
+</div>
+</div>
+<div id="contents" class="section level2">
+<h2 class="hasAnchor">
+<a href="#contents" class="anchor"></a>Contents</h2>
+<p>The <a href="/analysis">:file_folder: analysis</a> directory contains:</p>
+<ul>
+<li>
+<a href="/analysis/p3k14c">:page_facing_up: p3k14c</a>: R Markdown source document for the manuscript. Includes code to reproduce the figures and tables generated by the analysis. It also has a rendered version, <code>p3k14c.pdf</code>, suitable for reading (the code is replaced by figures and tables in this file).</li>
+<li>
+<a href="/analysis/data">:file_folder: data</a>: Data used in the analysis.<br>
+</li>
+<li>
+<a href="/analysis/figures">:file_folder: figures</a>: Plots and other illustrations</li>
+<li>
+<a href="/analysis/tables">:file_folder: tables</a>: Tables included in the paper</li>
+</ul>
+</div>
+<div id="how-to-run-in-your-browser-or-download-and-run-locally" class="section level2">
+<h2 class="hasAnchor">
+<a href="#how-to-run-in-your-browser-or-download-and-run-locally" class="anchor"></a>How to run in your browser or download and run locally</h2>
+<p>The simplest way to explore the text, code and data is to click on <a href="https://mybinder.org/v2/gh/people3k/p3k14c/master?urlpath=rstudio">binder</a> to open an instance of RStudio in your browser, which will have the compendium files ready to work with. Binder uses (rocker-project.org)<span class="math display"><em>r</em><em>o</em><em>c</em><em>k</em><em>e</em><em>r</em> − <em>p</em><em>r</em><em>o</em><em>j</em><em>e</em><em>c</em><em>t</em>.<em>o</em><em>r</em><em>g</em><em>D</em><em>o</em><em>c</em><em>k</em><em>e</em><em>r</em></span> images to ensure a consistent and reproducible computational environment. These Docker images can also be used locally.</p>
+<p>You can download the compendium as a zip from from this URL: <a href="/archive/main.zip">main.zip</a>. After unzipping, open the <code>Proj</code> file in RStudio, and run <code><a href="https://devtools.r-lib.org//reference/install.html">devtools::install()</a></code> to ensure you have the packages this analysis depends on (also listed in the <a href="/DESCRIPTION">DESCRIPTION</a> file). Then open <code>p3k14c.Rmd</code> and knit to produce the paper in PDF format.</p>
+<p>Or, simply install straight from Github:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span class="co"># install.packages("devtools")</span>
+<span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org//reference/remote-reexports.html">install_github</a></span><span class="op">(</span><span class="st">"people3k/p3k14c"</span><span class="op">)</span></code></pre></div>
+<div id="licenses" class="section level3">
+<h3 class="hasAnchor">
+<a href="#licenses" class="anchor"></a>Licenses</h3>
+<p><strong>Text and figures :</strong> <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a></p>
+<p><strong>Code :</strong> <a href="LICENSE.html">GNU GPLv3</a></p>
+<p><strong>Data :</strong> <a href="http://creativecommons.org/publicdomain/zero/1.0/">CC-0</a> attribution requested in reuse</p>
+</div>
+<div id="contributions" class="section level3">
+<h3 class="hasAnchor">
+<a href="#contributions" class="anchor"></a>Contributions</h3>
+<p>We welcome contributions from everyone. Before you get started, please see our <a href="CONTRIBUTING.html">contributor guidelines</a>. Please note that this project is released with a <a href="CONDUCT.html">Contributor Code of Conduct</a>. By participating in this project you agree to abide by its terms.</p>
+</div>
+<div id="acknowledgements" class="section level3">
+<h3 class="hasAnchor">
+<a href="#acknowledgements" class="anchor"></a>Acknowledgements</h3>
+<p>This compendium was created using the <a href="https://github.com/benmarwick/rrtools"><code>rrtools</code> package by Ben Marwick</a>, which is ✨ pure magic ✨ for doing reproducible research.</p>
+</div>
+</div>
+<div id="code-of-conduct" class="section level2">
+<h2 class="hasAnchor">
+<a href="#code-of-conduct" class="anchor"></a>Code of Conduct</h2>
+<p>Please note that the p3k14c project is released with a <a href="https://people3k.github.io/p3k14c/CODE_OF_CONDUCT.html">Contributor Code of Conduct</a>. By contributing to this project, you agree to abide by its terms.</p>
 </div>
 </div>
   </div>
@@ -114,6 +170,13 @@
 <li><small><a href="https://opensource.org/licenses/mit-license.php">MIT</a> + file <a href="LICENSE-text.html">LICENSE</a></small></li>
 </ul>
 </div>
+<div class="community">
+<h2>Community</h2>
+<ul class="list-unstyled">
+<li><a href="CONTRIBUTING.html">Contributing guide</a></li>
+<li><a href="CODE_OF_CONDUCT.html">Code of conduct</a></li>
+</ul>
+</div>
 <div class="developers">
 <h2>Developers</h2>
 <ul class="list-unstyled">
@@ -123,7 +186,13 @@
 </ul>
 </div>
 
-  </div>
+  <div class="dev-status">
+<h2>Dev status</h2>
+<ul class="list-unstyled">
+<li><a href="https://mybinder.org/v2/gh/people3k/p3k14c/master?urlpath=rstudio"><img src="https://mybinder.org/badge_logo.svg" alt="Binder"></a></li>
+</ul>
+</div>
+</div>
 </div>
 
 
