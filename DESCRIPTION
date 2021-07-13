@@ -51,8 +51,7 @@ Imports:
     bookdown,
     spatstat.geom,
     methods,
-    stats,
-    bocinsky/tdar
+    stats
 Remotes:
     ropensci/rnaturalearthhires
 Suggests:
