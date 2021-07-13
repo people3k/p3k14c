@@ -25,7 +25,7 @@ Umberto Lombardo [![](https://orcid.org/sites/default/files/images/orcid_16x16.p
 Madeline Mackie [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-0769-2348),
 Alessio Palmisano [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-0758-5032),
 Steinar Solheim [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-8293-8147),
-Robert L. Kelly[![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-9737-0152),
+Robert L. Kelly[![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-9737-0152), and
 Jacob Freeman [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-7402-8450).
 > ( **In review**). p3k14c: A synthetic global database of archaeological radiocarbon dates.
 
