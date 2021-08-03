@@ -585,6 +585,16 @@ ggplot2::ggsave(
 ```
 
 ```{r global-bias, fig.align='center', fig.width=7, fig.height=9}
+# NaturalEarth dataset of admin 1 boundaries
+sf::sf_use_s2(FALSE)
+admin_1  <-
+  rnaturalearth::ne_states(returnclass = "sf") %>%
+  dplyr::select(`Admin1` = name) %>%
+  sf::st_make_valid() %>%
+  sf::st_cast("MULTIPOLYGON") %>%
+  sf::st_transform(4326)
+# sf::sf_use_s2(TRUE)
+
 # Risk-type global assessment by continent
 global_dates_sites <-
   p3k14c::p3k14c_data %>%
@@ -596,22 +606,12 @@ global_dates_sites <-
     crs = "EPSG:4326",
     remove = FALSE
   ) %>%
-  sf::st_transform("EPSG:8857") %>%
-  sf::st_intersection(
-    rnaturalearth::ne_states(returnclass = "sf") %>%
-      dplyr::select(`Admin1` = name) %>%
-      sf::st_make_valid() %>%
-      sf::st_transform("EPSG:8857")
-  ) %>%
+  sf::st_intersection(admin_1) %>%
   sf::st_drop_geometry() %>%
   dplyr::group_by(Continent, `Admin1`) %>%
   dplyr::summarise(`Dated Sites` = dplyr::n(),
                    Dates = sum(Dates)) %>%
-  dplyr::left_join(
-    rnaturalearth::ne_states(returnclass = "sf") %>%
-      dplyr::select(`Admin1` = name) %>%
-      sf::st_make_valid()
-  ) %>%
+  dplyr::left_join(admin_1) %>%
   dplyr::arrange(Continent, `Admin1`) %>%
   sf::st_as_sf() %>%
   sf::st_transform("EPSG:8857") %>%
@@ -716,13 +716,14 @@ ggplot2::ggsave(
 ```
 
 ```{r conus-bias}
+options(tigris_use_cache = FALSE)
 
 conus_counties <- 
-  tigris::counties() %>%
+  tigris::counties(year = 2020) %>%
   dplyr::select(County = NAME, 
                 STATEFP) %>%
   sf::st_transform(crs = "ESRI:102003") %>%
-  dplyr::left_join(tigris::states() %>%
+  dplyr::left_join(tigris::states(year = 2020) %>%
                      sf::st_drop_geometry() %>%
                      dplyr::select(STATEFP, State = NAME)) %>%
   dplyr::select(County, State) %>%
