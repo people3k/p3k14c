@@ -329,7 +329,7 @@ p3k14c_plots <-
                           resolution = 1000)) %>%
   purrr::map(plot_risk)
 
-ggpubr::ggarrange( 
+ggpubr::ggarrange(
   plotlist = 
     p3k14c_plots %>% 
     purrr::transpose() %>%
@@ -337,14 +337,15 @@ ggpubr::ggarrange(
   ncol = 2,
   nrow = 3,
   align = "none",
-  labels = 
-    c("a","b","c","d","e","f"),
+  # labels = 
+  #   c("a","b","c","d","e","f"),
   legend = "top"
 )
 
 ggplot2::ggsave(
   filename = here::here("vignettes/articles/figures/Figure4_risk.pdf"),
-  width = 7,
+  device=cairo_pdf,
+  width = 8,
   height = 8,
   units = "in"
 )
