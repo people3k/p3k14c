@@ -1,9 +1,9 @@
-pandoc: 2.14.1
+pandoc: '2.15'
 pkgdown: 1.6.1
 pkgdown_sha: ~
 articles:
   articles/p3k14c: p3k14c.html
-last_built: 2021-08-03T03:21Z
+last_built: 2021-10-25T18:10Z
 urls:
   reference: https://people3k.github.io/p3k14c/reference
   article: https://people3k.github.io/p3k14c/articles

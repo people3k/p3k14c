@@ -338,7 +338,7 @@ ggpubr::ggarrange(
   nrow = 3,
   align = "none",
   labels = 
-    c("A","B","C","D","E","F"),
+    c("a","b","c","d","e","f"),
   legend = "top"
 )
 
@@ -514,7 +514,7 @@ regional_dates_sites_sma <-
   ) %>%
   tidyr::unnest(sma) %>%
   dplyr::ungroup() %>%
-  dplyr::mutate(panel = c("A", "B", "C", "D"))
+  dplyr::mutate(panel = c("a", "b", "c", "d"))
 
 regional_dates_sites %>%
   # dplyr::rename(Site_Type = `Site Type`) %>%
@@ -644,7 +644,7 @@ global_dates_sites_sma <-
   ) %>%
   tidyr::unnest(sma) %>%
   dplyr::ungroup() %>%
-  dplyr::mutate(panel = c("A", "B", "C", "D", "E", "F", "G"))
+  dplyr::mutate(panel = c("a", "b", "c", "d", "e", "f", "g"))
 
 global_dates_sites %>%
   ggplot(aes(x = `Dated Sites density`,
@@ -830,7 +830,7 @@ conus_dates_sites_sma <-
   ) %>%
   tidyr::unnest(sma) %>%
   dplyr::ungroup() %>%
-  dplyr::mutate(panel = c("A", "C", "E"))
+  dplyr::mutate(panel = c("a", "c", "e"))
 
 conus_dates_sites_sma_log <-
   conus_dates_sites %>%
@@ -845,7 +845,7 @@ conus_dates_sites_sma_log <-
   ) %>%
   tidyr::unnest(sma) %>%
   dplyr::ungroup() %>%
-  dplyr::mutate(panel = c("B", "D", "F"))
+  dplyr::mutate(panel = c("b", "d", "f"))
 
 conus_no_log <-
   conus_dates_sites %>%

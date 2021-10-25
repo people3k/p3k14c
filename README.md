@@ -27,7 +27,7 @@ Alessio Palmisano [![](https://orcid.org/sites/default/files/images/orcid_16x16.
 Steinar Solheim [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-8293-8147),
 Robert L. Kelly[![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-9737-0152), and
 Jacob Freeman [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-7402-8450).
-> ( **In review**). p3k14c: A synthetic global database of archaeological radiocarbon dates.
+> (2021) p3k14c: A synthetic global database of archaeological radiocarbon dates.
 
 ## Contents
 
@@ -66,7 +66,7 @@ You can install the released version of p3k14c from Github with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("people3k/p3k14c@0.9.1")
+remotes::install_github("people3k/p3k14c@1.0.0")
 ```
 
 ## Executable research compendium
