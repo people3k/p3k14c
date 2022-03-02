@@ -1,6 +1,6 @@
 
 # p3k14c 2022.6 (9 June 2022)
-* Will add a .bib file with all contributing datasets.
+* Added a .bib file with all contributing datasets.
 * Will add submitted datasets.
 * Will address duplicate concerns.
 * Will created a submission portal for researchers to submit data.
