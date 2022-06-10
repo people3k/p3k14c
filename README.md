@@ -1,35 +1,53 @@
 
-# p3k14c
+# Official R package for p13k14c
 
 <!-- badges: start -->
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/people3k/p3k14c/master?urlpath=rstudio)
 <!-- badges: end -->
 
-This repository contains the data and code for our paper:
+This is the official R package for the [p3k14c](https://p3k14c.org/) global archaeological radiocarbon database! This package streamlines accessing the data in R, and allows easy reproduction of the quality analysis and data validation from the [Scientific Data publication](https://www.nature.com/articles/s41597-022-01118-7).
 
-> Darcy Bird [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-3466-6284),
-Lux Miranda [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0002-3753-7405),
-Marc Vander Linden [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0002-0120-7754),
-Robinson, Erick [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0002-0789-3724),
-R. Kyle Bocinsky [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-1862-3428),
-Chris Nicholson [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-3212-2662),
-José M. Capriles [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-6046-0939),
-Judson Byrd Finley [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-0233-8630),
-Eugenia M. Gayo [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-0746-0512),
-Adolfo Gil [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-5718-8866),
-Jade d’Alpoim Guedes [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0002-2627-7863),
-Julie A. Hoggarth [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-8612-8846),
-Andrea Kay [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-8285-1893),
-Emma Loftus [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-4442-8511),
-Umberto Lombardo [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0002-0001-4870),
-Madeline Mackie [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-0769-2348),
-Alessio Palmisano [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0003-0758-5032),
-Steinar Solheim [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-8293-8147),
-Robert L. Kelly[![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-9737-0152), and
-Jacob Freeman [![](https://orcid.org/sites/default/files/images/orcid_16x16.png)](https://orcid.org/0000-0001-7402-8450).
-> (2021) p3k14c: A synthetic global database of archaeological radiocarbon dates.
+## Run in your browser
 
-## Contents
+The simplest way to use this package to explore p3k14c and supporting code is to click on
+[binder](https://mybinder.org/v2/gh/people3k/p3k14c/master?urlpath=rstudio)
+to open an instance of RStudio in your browser, which will have the
+compendium files all ready to work with! 
+
+Binder uses
+[rocker-project.org Docker](rocker-project.org) images to ensure a
+consistent and reproducible computational environment. These Docker
+images can also be used locally.
+
+## Installation
+
+### Via GitHub (recommended) 
+
+You can install the most recent release of p3k14c (version 2022.06) from Github with:
+
+``` r
+# install.packages("remotes")
+remotes::install_github("people3k/p3k14c@2022.06")
+```
+
+### Manually
+
+You can download the compendium as a zip from from this URL:
+[main.zip](/archive/main.zip). After unzipping, open the `Proj` file
+in RStudio, and run `devtools::install()` to ensure you have the
+packages this analysis depends on (also listed in the
+[DESCRIPTION](/DESCRIPTION) file). Then open `p3k14c.Rmd` and knit
+to produce the paper in PDF format.
+
+
+## Accessing the **p3k14c** dataset
+Once the **p3k14c** package is installed, you can access the data via R:
+``` r
+library(p3k14c)
+p3k14c::p3k14c_data
+```
+
+## Repository contents
 
 The [:file\_folder: vignettes/articles](vignettes/articles) directory contains:
 
@@ -43,34 +61,8 @@ The [:file\_folder: vignettes/articles](vignettes/articles) directory contains:
   - [:file\_folder: tables](vignettes/articles/tables): Tables included in 
     the paper
 
-## How to run in your browser or download and run locally
-
-The simplest way to explore the text, code and data is to click on
-[binder](https://mybinder.org/v2/gh/people3k/p3k14c/master?urlpath=rstudio)
-to open an instance of RStudio in your browser, which will have the
-compendium files ready to work with. Binder uses
-(rocker-project.org)\[rocker-project.org Docker\] images to ensure a
-consistent and reproducible computational environment. These Docker
-images can also be used locally.
-
-You can download the compendium as a zip from from this URL:
-[main.zip](/archive/main.zip). After unzipping, open the `Proj` file
-in RStudio, and run `devtools::install()` to ensure you have the
-packages this analysis depends on (also listed in the
-[DESCRIPTION](/DESCRIPTION) file). Then open `p3k14c.Rmd` and knit
-to produce the paper in PDF format.
-
-## Installation
-
-You can install the released version of p3k14c from Github with:
-
-``` r
-# install.packages("remotes")
-remotes::install_github("people3k/p3k14c@1.0.0")
-```
-
 ## Executable research compendium
-You are required to have a copy of the raw **p3k14c** dataset, available through tDAR at [https://doi.org/10.48512/XCV8459173](https://doi.org/10.48512/XCV8459173). Clone this repository, then place the `p3k14c_raw.csv` at `../p3k14c-data/p3k14c_raw.csv`, relative to the working director of the cloned repository.
+To reproduce the quality analysis and data validation from the Scientific Data publication, you are required to have a copy of the raw **p3k14c** dataset, available through tDAR at [https://doi.org/10.48512/XCV8459173](https://doi.org/10.48512/XCV8459173). Clone this repository, then place the `p3k14c_raw.csv` at `../p3k14c-data/p3k14c_raw.csv`, relative to the working director of the cloned repository.
 
 You can do so thus:
 
@@ -90,20 +82,15 @@ or, within R itself:
 rmarkdown::render('vignettes/articles/p3k14c.Rmd', output_dir = 'vignettes/articles')
 ```
 
-## Accessing the scrubbed/fuzzed **p3k14c** dataset
-Once the **p3k14c** package is installed, you can access the scrubbed/fuzzed **p3k14c** via R:
-``` r
-library(p3k14c)
-p3k14c::p3k14c_data
-```
-
 ### How to cite
 
-Please cite this compendium as:
+If you use this compendium in your work, please cite both the package as well as the p3k14c publication:
 
 > Bocinsky, R. Kyle, Darcy Bird, and Erick Robinson, (2020). *Compendium
 > of R code and data for p3k14c: A synthetic global database of 
 > archaeological radiocarbon dates*. Accessed \[TODAY'S DATE\].
+
+> Bird, D., Miranda, L., Vander Linden, M. et al. p3k14c, a synthetic global database of archaeological radiocarbon dates. Sci Data 9, 27 (2022). https://doi.org/10.1038/s41597-022-01118-7
 
 ### Licenses
 
