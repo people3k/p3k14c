@@ -86,9 +86,9 @@ rmarkdown::render('vignettes/articles/p3k14c.Rmd', output_dir = 'vignettes/artic
 
 If you use this compendium in your work, please cite both the package as well as the p3k14c publication:
 
-> Bocinsky, R. Kyle, Darcy Bird, and Erick Robinson, (2020). *Compendium
+> Bocinsky, R. Kyle, Darcy Bird, Lux Miranda, and Jacob Freeman, (2022.6). *Compendium
 > of R code and data for p3k14c: A synthetic global database of 
-> archaeological radiocarbon dates*. Accessed \[TODAY'S DATE\].
+> archaeological radiocarbon dates*. Accessed \[TODAY'S DATE\]. https://doi.org/10.5281/zenodo.6633635
 
 > Bird, D., Miranda, L., Vander Linden, M. et al. p3k14c, a synthetic global database of archaeological radiocarbon dates. Sci Data 9, 27 (2022). https://doi.org/10.1038/s41597-022-01118-7
 
