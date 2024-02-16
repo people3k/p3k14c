@@ -1,5 +1,5 @@
 
-# Official R package for p13k14c
+# Official R package for p3k14c
 
 <!-- badges: start -->
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/people3k/p3k14c/master?urlpath=rstudio)
