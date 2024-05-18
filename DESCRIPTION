@@ -47,7 +47,6 @@ Imports:
     raster,
     rnaturalearth,
     rnaturalearthhires (>= 0.2.0),
-    rgeos,
     bookdown,
     spatstat.geom,
     methods,
