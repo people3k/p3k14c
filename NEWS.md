@@ -1,3 +1,7 @@
+# p3k14c 2025.07 (23 July 2025)
+* Removed rgeos dependency
+* Updated README
+* NOTE: The vignette will no longer run
 
 # p3k14c 2022.6 (9 June 2022)
 * Added a .bib file with all contributing datasets.
