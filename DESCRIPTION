@@ -25,7 +25,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.3.2
 URL: https://people3k.github.io/p3k14c, https://github.com/people3k/p3k14c
 BugReports: https://github.com/people3k/p3k14c/issues
 Depends:

@@ -23,11 +23,11 @@ images can also be used locally.
 
 ### Via GitHub (recommended) 
 
-You can install the most recent release of p3k14c (version 2022.06) from Github with:
+You can install the most recent release of p3k14c (version 2024.05) from Github with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("people3k/p3k14c@2022.06")
+remotes::install_github("people3k/p3k14c@2024.05")
 ```
 
 ### Manually
