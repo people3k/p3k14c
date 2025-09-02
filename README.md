@@ -95,11 +95,11 @@ If you use this compendium in your work, please cite both the package as well as
 ### Licenses
 
 **Text and figures :**
-[CC-BY-4.0](http://creativecommons.org/licenses/by/4.0/)
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
 
-**Code :** [GNU GPLv3](LICENSE.md)
+**Code :** [MIT](LICENSE.md)
 
-**Data :** [CC-0](http://creativecommons.org/publicdomain/zero/1.0/)
+**Data :** [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
 attribution requested in reuse
 
 ### Contributions
